@@ -1,0 +1,46 @@
+{
+  "name": "mmm-rainradar",
+  "version": "0.4.0",
+  "description": "Configurable MeteoSwiss precipitation radar and forecast for MagicMirror\u00b2",
+  "main": "MMM-RainRadar.js",
+  "license": "MIT",
+  "engines": {
+    "node": ">=10.24.0"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "check": "node scripts/check.js",
+    "demo": "node demo/server.js",
+    "build:replay": "node scripts/build-replay.mjs",
+    "prepack": "npm run check && npm test"
+  },
+  "files": [
+    "MMM-RainRadar.js",
+    "MMM-RainRadar.css",
+    "node_helper.js",
+    "lib/",
+    "public/",
+    "examples/config.js",
+    "README.md",
+    "LICENSE",
+    "NOTICE.md",
+    "CHANGELOG.md",
+    "docs/"
+  ],
+  "keywords": [
+    "magicmirror",
+    "magicmirror-module",
+    "radar",
+    "meteoswiss",
+    "switzerland"
+  ],
+  "devDependencies": {
+    "acorn": "^8.15.0",
+    "d3-contour": "^4.0.2",
+    "linkedom": "^0.18.12"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mkubicek/MMM-RainRadar.git"
+  }
+}

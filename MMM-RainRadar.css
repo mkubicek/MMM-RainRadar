@@ -1,0 +1,69 @@
+/* Scoped to this module: no global theme, font or MagicMirror header overrides. */
+.MMM-RainRadar .rr-widget, .rr-widget { color: #999; font-family: inherit; text-align: left; }
+.rr-widget * { box-sizing: border-box; }
+.rr-widget .rr-map { position: relative; width: 100%; overflow: hidden; background: #000; }
+.rr-widget .rr-map > * { position: absolute; inset: 0; width: 100%; height: 100%; }
+.rr-widget .rr-basemap { filter: grayscale(1) brightness(.5); }
+/* Own compositor layers: redrawing the rain canvas must not re-rasterise the filtered base map. */
+.rr-widget .rr-basemap, .rr-widget .rr-rain { will-change: transform; }
+.rr-widget .rr-marker circle { fill: #999; }
+.rr-widget .rr-home circle { fill: #fff; stroke: #000; stroke-width: 1; }
+.rr-widget .rr-map text { fill: #aaa; font-size: 11px; font-weight: 300; paint-order: stroke; stroke: #000; stroke-width: 3px; }
+.rr-widget .rr-chart-wrap { position: relative; width: 100%; height: 60px; margin-top: 5px; }
+.rr-widget .rr-chart-wrap svg { display: block; width: 100%; height: 60px; overflow: hidden; }
+.rr-widget .rr-chart-wrap text { font-size: 10px; fill: #666; }
+.rr-widget .rr-chart-wrap .rr-period { font-size: 9px; fill: #888; }
+.rr-widget .rr-bar { fill: #aaa; fill-opacity: .55; }
+.rr-widget .rr-bar.rr-forecast { fill-opacity: .32; }
+.rr-widget .rr-bar.rr-missing { fill: none; stroke: #777; stroke-width: .8; }
+.rr-widget .rr-baseline { stroke: #333; stroke-width: 1; }
+.rr-widget .rr-future-line { stroke-dasharray: 3 4; }
+.rr-widget .rr-boundary { stroke: #666; stroke-width: 1; }
+.rr-widget .rr-cursor { stroke: #ddd; fill: #ddd; stroke-width: 1; pointer-events: none; }
+.rr-widget[data-playing=true] .rr-cursor { stroke: none; fill: #777; opacity: .65; }
+.rr-widget[data-playing=true] .rr-cursor line { display: none; }
+.rr-widget .rr-scrubber { position: absolute; left: 0; top: 10px; width: 100%; height: 34px; margin: 0; opacity: 0; cursor: ew-resize; appearance: none; -webkit-appearance: none; background: transparent; }
+.rr-widget .rr-scrubber::-webkit-slider-thumb { appearance: none; -webkit-appearance: none; width: 8px; height: 34px; }
+.rr-widget .rr-scrubber::-moz-range-thumb { width: 8px; height: 34px; border: 0; }
+.rr-widget .rr-chart-wrap:focus-within { outline: 1px solid #777; outline-offset: 2px; }
+.rr-widget .rr-playback { display: flex; flex-wrap: wrap; align-items: center; gap: 0 8px; min-height: 20px; font-size: 11px; color: #888; font-variant-numeric: tabular-nums; line-height: 20px; }
+.rr-widget .rr-button { border: 0; padding: 0 2px; background: transparent; font: inherit; color: #aaa; cursor: pointer; min-width: 16px; }
+.rr-widget .rr-button:disabled { opacity: .3; cursor: default; }
+.rr-widget .rr-button:focus { outline: 1px solid #777; outline-offset: 3px; }
+.rr-widget .rr-attribution { margin-left: auto; font-size: 9px; white-space: nowrap; color: #555; }
+.rr-widget .rr-attribution a { color: inherit; text-decoration: none; }
+.rr-widget .rr-attribution a:focus { color: #aaa; }
+.rr-widget .rr-notice { font-size: 10px; line-height: 1.4; color: #a69b8d; margin-top: 3px; }
+.rr-widget .rr-legend { margin: 8px 0 0 auto; display: flex; width: 180px; font-size: 8px; color: #666; gap: 4px; }
+.rr-widget .rr-legend span { flex: 1; border-top: 2px solid transparent; padding-top: 3px; opacity: .6; }
+.rr-widget[data-playing=true] .rr-time::before { content: ''; display: inline-block; width: 2px; height: 2px; margin-right: 6px; border-radius: 50%; background: #666; }
+.rr-widget [hidden] { display: none !important; }
+/* Forecast panels stay still while radar frames advance. */
+.rr-widget .rr-weather-now { display:flex; align-items:center; gap:10px; min-height:40px; margin-bottom:10px; font-size:12px; }
+.rr-widget .rr-weather-icon { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:1.3; stroke-linecap:round; stroke-linejoin:round; flex-shrink:0; color:#999; }
+.rr-widget .rr-weather-icon[data-tone=sun] { color:#c5b36f; }
+.rr-widget .rr-weather-icon[data-tone=moon] { color:#b9b193; }
+.rr-widget .rr-weather-icon[data-tone=cloud] { color:#969fa8; }
+.rr-widget .rr-weather-icon[data-tone=rain] { color:#7da5bb; }
+.rr-widget .rr-weather-icon[data-tone=snow] { color:#a2bac5; }
+.rr-widget .rr-weather-icon[data-tone=storm] { color:#ac99b8; }
+.rr-widget .rr-weather-now > .rr-weather-icon { width:27px; height:27px; }
+.rr-widget .rr-current-temp { font-size:30px; line-height:1; color:#ddd; font-weight:300; }
+.rr-widget .rr-current-summary { text-align:left; line-height:1.45; }
+.rr-widget .rr-current-condition { color:#aaa; text-transform:capitalize; }
+.rr-widget .rr-current-detail { font-size:11px; color:#777; }
+.rr-widget .rr-weather-heading { line-height:1.4; font-size:9px; letter-spacing:1px; color:#666; margin:5px 0 7px; }
+.rr-widget .rr-weather-hours { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:4px; text-align:center; }
+.rr-widget .rr-hour-label, .rr-widget .rr-day-label { font-size:11px; color:#888; line-height:1.4; }
+.rr-widget .rr-hour-temp, .rr-widget .rr-day-temp { display:flex; justify-content:center; align-items:center; gap:4px; color:#ccc; font-size:18px; line-height:1.6; }
+.rr-widget .rr-hour-temp .rr-weather-icon { width:16px; height:16px; }
+.rr-widget .rr-rain-chance { font-size:11px; color:#888; line-height:1.5; }
+.rr-widget .rr-rain-amount { font-size:10px; color:#666; line-height:1.4; }
+.rr-widget .rr-days-heading { border-top:1px solid #242424; padding-top:9px; margin-top:10px; }
+.rr-widget .rr-weather-days { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin-bottom:9px; text-align:center; }
+.rr-widget .rr-low { font-size:13px; color:#777; margin-left:2px; }
+.rr-widget .rr-day-rain { font-size:11px; color:#888; line-height:1.4; }
+.rr-widget .rr-weather-notice { font-size:10px; color:#a69b8d; line-height:1.5; }
+
+.rr-widget .rr-weather-panels { margin-top:8px; }
+.rr-widget .rr-weather-credits { display:flex; line-height:1.4; font-size:9px; }
