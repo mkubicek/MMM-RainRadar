@@ -4,10 +4,9 @@
 
 - Adaptive playback speeds through dry home frames, slows for local rain and heavy rain,
   and holds arrival, peak, clearing and the latest observation.
-- Minimal map/timeline presentation with blue/amber home halos, dashed forecast rings
+- Minimal map/timeline presentation with a simple home dot, blue/amber precipitation bars
   and shaded home rain windows. Summary, arrival/clearing estimates and captions are opt-in.
-- Reduced-motion and pause/suspend behavior apply to the halo pulse; constant pacing and
-  hiding the summary remain configurable.
+- Constant playback pacing remains configurable.
 - Dry-day playback requires complete home coverage; unavailable frames cannot appear dry.
 - Demo-only scenarios and browser-verified narrow-layout screenshots.
 - Compact weather spacing keeps the home radar and existing forecast panels in narrow columns.

@@ -11,7 +11,7 @@ bars for your configured location. The chart doubles as the animation scrubber.
 - One hour of past observations and a **10-hour forecast** by default.
 - Bars represent precipitation intensity classes at your chosen location.
 - Home-focused playback: fast through dry frames, slower over rain, with readable arrival/peak holds.
-- A subtle home halo and shaded local rain windows; optional arrival/clearing summary.
+- A simple home dot and shaded local rain windows; optional arrival/clearing summary.
 - Pause, drag-to-select and keyboard navigation.
 - Optional integrated current weather, 12-hour outlook and three-day forecast.
 - Multiple instances, cached downloads, partial-frame and stale-data indicators.
@@ -126,7 +126,7 @@ is required. Invalid settings produce an explanatory message in the widget.
 | `width`, `height` | `460`, `230` | Map size in CSS pixels; allow about 110 px for header/chart/footer, plus optional summary/weather panels |
 | `pixelRatio` | `1` | Rendering scale, 1–2; keep 1 for a Pi, use 2 for a high-DPI display |
 | `markers` | `[]` | Up to 20 `{ latitude, longitude, label, showLabel }` objects |
-| `showLocation` | `true` | Draw a bright home dot; rain in the displayed frame adds a halo |
+| `showLocation` | `true` | Draw a bright home dot |
 | `showHomeSummary` | `false` | Opt into a home status/arrival summary and map caption; the default keeps the view minimal |
 | `showLocationLabel` | `false` | Show the location's label |
 | `showMarkerLabels` | `true` | Allow marker labels; individual `showLabel: false` still hides them |
@@ -157,12 +157,9 @@ the first available frame at/after the requested end; shorter availability is sh
 
 ## Reading and controlling the chart
 
-The default view shows the map, home precipitation bars and timestamp. A blue double
-halo highlights precipitation over home; amber highlights classes of 10 mm/h and above.
-Forecast halos
-have a dashed inner ring. A gentle opacity pulse runs during playback, respects
-reduced-motion preferences and stops when paused or hidden. These cues remain
-usable in grayscale. Heavy rain is not a confirmation of thunder or lightning.
+The default view shows the map with a simple home dot, home precipitation bars and
+timestamp. Blue bars indicate rain over home; amber bars indicate classes of 10 mm/h
+and above. Heavy rain is not a confirmation of thunder or lightning.
 
 Set `showHomeSummary: true` for a steady current-condition summary, approximate
 forecast arrival/clearing times and a separate map-frame caption. This summary uses

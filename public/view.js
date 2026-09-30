@@ -49,11 +49,7 @@
     points.forEach(function(p){
       if(!core.contains(c.bounds,p.point))return;
       var xy=core.pixel(p.point,c.bounds,c.width,c.height);var group=svg("g",{"class":p.home?"rr-home":"rr-marker"});
-      if(p.home){
-        self.homeMarker=group;
-        group.appendChild(svg("circle",{cx:xy[0],cy:xy[1],r:16,"class":"rr-home-halo"}));
-        group.appendChild(svg("circle",{cx:xy[0],cy:xy[1],r:9,"class":"rr-home-ring"}));
-      }
+      if(p.home)self.homeMarker=group;
       group.appendChild(svg("circle",{cx:xy[0],cy:xy[1],r:p.home?3:1.6,"class":p.home?"rr-home-dot":""}));
       if(p.show&&p.label){var right=xy[0]>c.width*0.72;var text=svg("text",{x:xy[0]+(right?-7:7),y:Math.max(12,Math.min(c.height-4,xy[1]+4)),"text-anchor":right?"end":"start"});text.textContent=p.label;group.appendChild(text);}
       places.appendChild(group);

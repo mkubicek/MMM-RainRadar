@@ -8,16 +8,6 @@
 .rr-widget .rr-basemap, .rr-widget canvas.rr-rain { will-change: transform; }
 .rr-widget .rr-marker circle { fill: #999; }
 .rr-widget .rr-home .rr-home-dot { fill: #fff; stroke: #000; stroke-width: 2; }
-.rr-widget .rr-home-ring, .rr-widget .rr-home-halo { fill: none; stroke: #777; stroke-width: 1; }
-.rr-widget .rr-home-halo { opacity: 0; }
-.rr-widget .rr-home[data-state=rain], .rr-widget .rr-home[data-state=heavy] { --rr-home-color: #91bdd2; }
-.rr-widget .rr-home[data-state=heavy] { --rr-home-color: #e1ba7d; }
-.rr-widget .rr-home[data-state=rain] .rr-home-ring, .rr-widget .rr-home[data-state=heavy] .rr-home-ring { stroke: var(--rr-home-color); stroke-width: 2; }
-.rr-widget .rr-home[data-state=rain] .rr-home-halo, .rr-widget .rr-home[data-state=heavy] .rr-home-halo { stroke: var(--rr-home-color); stroke-width: 2; opacity: .5; }
-.rr-widget .rr-home[data-kind=forecast] .rr-home-ring { stroke-dasharray: 3 2; }
-.rr-widget[data-playing=true] .rr-home[data-state=rain] .rr-home-halo, .rr-widget[data-playing=true] .rr-home[data-state=heavy] .rr-home-halo { animation: rr-home-breathe 2.4s ease-in-out infinite; }
-@keyframes rr-home-breathe { 0%,100% { opacity: .25; } 50% { opacity: .75; } }
-@media(prefers-reduced-motion:reduce) { .rr-widget .rr-home .rr-home-halo { animation: none !important; } }
 .rr-widget .rr-home-summary { position: relative; min-height: 52px; margin: 0 0 6px; padding: 5px 0 5px 11px; border-left: 2px solid #333; }
 .rr-widget .rr-home-heading { position: absolute; top: 8px; right: 0; color: #888; font-size: 9px; letter-spacing: 1.1px; line-height: 1.4; }
 .rr-widget .rr-home-heading > span:first-child { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
