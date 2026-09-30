@@ -23,7 +23,7 @@ function scene(config,name,now){
     if(homeLevel>0){
       polygons.push(cloud(config.point[0],config.point[1],4300,core.scale[homeLevel-1].color));
     }
-    const available=!(name==="missing"&&(i===12||i===15));
+    const available=!(name==="missing"&&(i<=12||i===15));
     return {time:latest+minute*60,kind:i<=12?"measurement":"forecast",available,
       homeLevel:available?homeLevel:null,polygons:available?polygons:[]};
   });

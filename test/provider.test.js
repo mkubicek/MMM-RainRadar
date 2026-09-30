@@ -14,3 +14,36 @@ test('matching concurrent instances account for shared prepared cache exactly on
   await Promise.all([p.series(core.normalize({})),p.series(core.normalize({}))]);
   assert.equal(p.prepared.size,4);assert.equal(p.preparedBytes,[...p.prepared.values()].reduce((sum,v)=>sum+v.size,0));
 });
+test('missing older images cannot prevent loading the newest usable observation',async()=>{
+  const manifest={map_images:[{pictures:Array.from({length:12},(_,i)=>picture(latest-(11-i)*300,'measurement'))}]};
+  const p=new RadarProvider({fetch:async url=>{
+    if(url.endsWith('versions.json'))return{'precipitation/animation':'v1'};
+    if(url.endsWith('animation.json'))return manifest;
+    const time=Number(url.match(/\/(\d+)\.json$/)[1]);
+    if(time<latest-7*300)throw Error('Weather service HTTP 404');return raw;
+  }});
+  const result=await p.series(core.normalize({pastMinutes:60,forecastHours:0}));
+  assert.equal(result.frames[result.frames.length-1].available,true);
+});
+test('malformed older contours affect individual frames without cancelling later images',async()=>{
+  const manifest={map_images:[{pictures:Array.from({length:12},(_,i)=>picture(latest-(11-i)*300,'measurement'))}]};
+  const p=new RadarProvider({fetch:async url=>{
+    if(url.endsWith('versions.json'))return{'precipitation/animation':'v1'};
+    if(url.endsWith('animation.json'))return manifest;
+    const time=Number(url.match(/\/(\d+)\.json$/)[1]);
+    return time<latest-7*300?Object.assign({},raw,{coords:null}):raw;
+  }});
+  const result=await p.series(core.normalize({pastMinutes:60,forecastHours:0}));
+  assert.equal(result.frames.filter(f=>!f.available).length,4);
+  assert.equal(result.frames[result.frames.length-1].available,true);
+});
+test('a sustained transport outage still stops after a bounded number of frame requests',async()=>{
+  let requests=0;const manifest={map_images:[{pictures:Array.from({length:24},(_,i)=>picture(latest-(23-i)*300,'measurement'))}]};
+  const p=new RadarProvider({fetch:async url=>{
+    if(url.endsWith('versions.json'))return{'precipitation/animation':'v1'};
+    if(url.endsWith('animation.json'))return manifest;
+    requests++;throw Error('Weather request timed out');
+  }});
+  await assert.rejects(p.series(core.normalize({pastMinutes:180,forecastHours:0})),/unavailable/);
+  assert.ok(requests<=7);
+});

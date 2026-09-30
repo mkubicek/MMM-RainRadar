@@ -63,9 +63,9 @@ test('home summary and map marker can be hidden independently',()=>{
     assert.equal(v.homeSummary.hidden,true);assert.equal(v.homeMarker,undefined);assert.match(v.homeFrameTitle.textContent,/Rain over home/);
   }finally{v.destroy();}
 });
-test('frame unavailable and local coverage gaps cannot freeze as an entirely dry scene',()=>{
+test('missing forecasts remain incomplete when only one usable observation exists',()=>{
   const v=setup({autoplay:true});try{v.setData({latestObservation:now,frames:[{time:now,kind:'measurement',available:true,homeLevel:0,polygons:[]},{time:now+300,kind:'forecast',available:false,homeLevel:null,polygons:[]}]});
-    assert.equal(v.dry,false);assert.ok(v.timer);assert.match(v.homeDetail.textContent,/incomplete/);
+    assert.equal(v.dry,false);assert.equal(v.timer,null);assert.match(v.homeDetail.textContent,/incomplete/);
   }finally{v.destroy();}
 });
 test('refresh updates current home conditions while retaining a paused historical frame',()=>{
@@ -80,5 +80,44 @@ test('refresh updates current home conditions while retaining a paused historica
 test('a recording with missing home data cannot claim dry conditions',()=>{
   const v=setup();try{v.setData({latestObservation:now,replay:true,label:'Archived',frames:[{time:now,kind:'measurement',available:false,homeLevel:null,polygons:[]}]});
     assert.match(v.homeHeadline.textContent,/incomplete/);assert.equal(v.homeSummary.dataset.state,'unknown');
+  }finally{v.destroy();}
+});
+test('a missing newest frame uses the recent valid observation rather than announcing home radar unavailable',()=>{
+  const v=setup({showHomeSummary:true});try{v.setData({latestObservation:now,frames:[
+    {time:now-300,kind:'measurement',available:true,homeLevel:0,polygons:[]},
+    {time:now,kind:'measurement',available:false,homeLevel:null,polygons:[]},
+    {time:now+300,kind:'forecast',available:true,homeLevel:0,polygons:[]}
+  ]});
+    assert.notEqual(v.homeHeadline.textContent,'Home radar unavailable');
+    assert.equal(v.index,0);assert.equal(v.kind.textContent,'Observed');
+    assert.equal(v.homeSource.textContent,'LATEST RADAR · '+v.timeLabel(now-300));
+    assert.ok(!v.notice.textContent.includes('Frame unavailable'));
+  }finally{v.destroy();}
+});
+test('default view stays minimal in dry, rainy, heavy and unavailable home scenes',()=>{
+  const v=setup();try{for(const name of ['dry','rain','heavy','missing']){
+    v.setData(scene(v.config,name,Date.now()));
+    assert.equal(v.homeSummary.hidden,true);assert.equal(v.homeFrame.hidden,true);assert.equal(v.focus.hidden,true);
+    assert.equal(v.focus.textContent,'');
+  }}finally{v.destroy();}
+});
+test('automatic playback skips unavailable frames while manual scrubbing can still select them',t=>{
+  t.mock.timers.enable({apis:['setTimeout']});
+  const v=setup({autoplay:true});try{
+    v.setData({latestObservation:now,frames:[
+      {time:now,kind:'measurement',available:true,homeLevel:0,polygons:[]},
+      {time:now+300,kind:'forecast',available:false,homeLevel:null,polygons:[]},
+      {time:now+600,kind:'forecast',available:true,homeLevel:3,polygons:[]}
+    ]});
+    t.mock.timers.tick(1000);assert.equal(v.index,2);assert.ok(!v.notice.textContent.includes('Frame unavailable'));
+    v.slider.value=now+300;v.slider.oninput();assert.equal(v.index,1);assert.match(v.notice.textContent,/Frame unavailable/);
+  }finally{v.destroy();}
+});
+test('a single usable observation is held without pretending there is an animation',()=>{
+  const v=setup({autoplay:true});try{
+    v.setData({latestObservation:now,frames:[
+      {time:now,kind:'measurement',available:true,homeLevel:3,polygons:[]},
+      {time:now+300,kind:'forecast',available:false,homeLevel:null,polygons:[]}
+    ]});assert.equal(v.timer,null);assert.equal(v.root.dataset.playing,'false');assert.equal(v.play.disabled,true);
   }finally{v.destroy();}
 });

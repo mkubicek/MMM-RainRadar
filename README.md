@@ -11,7 +11,7 @@ bars for your configured location. The chart doubles as the animation scrubber.
 - One hour of past observations and a **10-hour forecast** by default.
 - Bars represent precipitation intensity classes at your chosen location.
 - Home-focused playback: fast through dry frames, slower over rain, with readable arrival/peak holds.
-- A steady home summary, rain/clearing estimates and an overhead-rain halo.
+- A subtle home halo and shaded local rain windows; optional arrival/clearing summary.
 - Pause, drag-to-select and keyboard navigation.
 - Optional integrated current weather, 12-hour outlook and three-day forecast.
 - Multiple instances, cached downloads, partial-frame and stale-data indicators.
@@ -123,11 +123,11 @@ is required. Invalid settings produce an explanatory message in the widget.
 | `location` | Zurich city centre | `{ latitude, longitude, label }`; point sampled by bars |
 | `mapCenter` | `null` | `{ latitude, longitude }`; `null` centres on `location` |
 | `mapSpanKm` | `48` | East–west span, 10–700 km; north–south span follows the aspect ratio |
-| `width`, `height` | `460`, `230` | Map size in CSS pixels; allow about 190 px for header/home summary/chart/footer, plus optional weather panels |
+| `width`, `height` | `460`, `230` | Map size in CSS pixels; allow about 110 px for header/chart/footer, plus optional summary/weather panels |
 | `pixelRatio` | `1` | Rendering scale, 1–2; keep 1 for a Pi, use 2 for a high-DPI display |
 | `markers` | `[]` | Up to 20 `{ latitude, longitude, label, showLabel }` objects |
 | `showLocation` | `true` | Draw a bright home dot; rain in the displayed frame adds a halo |
-| `showHomeSummary` | `true` | Show latest home radar conditions and the upcoming local rain outlook |
+| `showHomeSummary` | `false` | Opt into a home status/arrival summary and map caption; the default keeps the view minimal |
 | `showLocationLabel` | `false` | Show the location's label |
 | `showMarkerLabels` | `true` | Allow marker labels; individual `showLabel: false` still hides them |
 | `mapStyle` | `"rivers"` | `"rivers"`, `"lakes"`, or `"none"` |
@@ -157,24 +157,22 @@ the first available frame at/after the requested end; shorter availability is sh
 
 ## Reading and controlling the chart
 
-The **AT HOME** summary stays steady while the map animates. It uses the latest
-observation at `location`, with a timestamp. When that point is dry and the model
-shows rain within 90 minutes, the headline switches to an approximate arrival
-countdown. Rain at home takes priority, showing its intensity class and the first
-forecast dry sample when available. The summary updates on data refresh and once
-per minute; it never follows the playback cursor.
-
-The map's separate caption describes **the displayed frame**, including whether
-it is observed or forecast. A blue double halo highlights precipitation over home;
-amber highlights classes of 10 mm/h and above, labelled heavy rain. Forecast halos
+The default view shows the map, home precipitation bars and timestamp. A blue double
+halo highlights precipitation over home; amber highlights classes of 10 mm/h and above.
+Forecast halos
 have a dashed inner ring. A gentle opacity pulse runs during playback, respects
 reduced-motion preferences and stops when paused or hidden. These cues remain
 usable in grayscale. Heavy rain is not a confirmation of thunder or lightning.
 
+Set `showHomeSummary: true` for a steady current-condition summary, approximate
+forecast arrival/clearing times and a separate map-frame caption. This summary uses
+the latest usable home observation with its real timestamp, independently of playback.
+It updates once per minute and on data refresh.
+
 Rain/clearing times are approximate first wet/dry radar-model samples, subject to
 frame spacing and forecast uncertainty. Missing samples break rain windows and
-suppress confident arrival countdowns. Stale observations use “Last radar” rather
-than a current-condition headline. “Dry” means below the radar's 0.2 mm/h display
+suppress confident arrival countdowns. The optional summary labels stale observations
+“Last radar”. “Dry” means below the radar's 0.2 mm/h display
 threshold, not a reading from a sensor at the house.
 
 Bars show **intensity classes**, not an exact continuous rainfall rate or an
@@ -202,6 +200,9 @@ message. Stale observations are explicitly labelled. Missing individual frames
 stay in the timeline and are marked unavailable. Existing pause, time selection
 and speed survive a data refresh. Hiding the MagicMirror module pauses playback
 and polling; showing it resumes the chosen playback state and requests fresh data.
+If the newest image is missing, the map starts on the latest usable observation.
+Automatic playback skips unavailable images; manual scrubbing can still inspect
+their marked gaps. Individual missing images do not cancel the remaining downloads.
 
 ## Raspberry Pi performance
 

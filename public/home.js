@@ -21,7 +21,15 @@
         active=null;
       }
     });
-    var latest=frames.findIndex(function(f){return f.kind==="measurement"&&f.time===data.latestObservation;});
+    // A manifest can advertise a frame before the image is usable. Keep the last
+    // successful observation, with its real timestamp, rather than selecting a blank map.
+    var latest=-1,available=-1;
+    frames.forEach(function(f,i){
+      if(f.kind!=="measurement"||f.time>data.latestObservation||!f.available)return;
+      if(available<0||f.time>frames[available].time)available=i;
+      if(level(f)!==null&&(latest<0||f.time>frames[latest].time))latest=i;
+    });
+    if(latest<0)latest=available;
     return {frames:frames,latest:latest,episodes:episodes,byFrame:byFrame};
   }
   function outlook(timeline,now){

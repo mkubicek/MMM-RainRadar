@@ -19,7 +19,7 @@
     mapStyle: "rivers", mapOpacity: 0.65, rainOpacity: 0.9,
     pastMinutes: 60, forecastHours: 10, frameStepMinutes: 5,
     updateInterval: 300000, staleAfterMinutes: 20,
-    autoplay: true, respectReducedMotion: true, adaptivePlayback: true, showHomeSummary: true,
+    autoplay: true, respectReducedMotion: true, adaptivePlayback: true, showHomeSummary: false,
     frameInterval: 480, playbackSpeed: 4,
     pauseAtLatest: 0, timeZone: "Europe/Zurich", locale: "en-GB"
   };

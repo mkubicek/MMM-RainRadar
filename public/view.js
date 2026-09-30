@@ -83,6 +83,7 @@
     this.time=element("span","rr-time","—");this.kind=element("span","rr-kind","");
     footer.appendChild(this.play);footer.appendChild(this.time);footer.appendChild(this.kind);
     this.focus=element("span","rr-focus","");footer.appendChild(this.focus);
+    this.focus.hidden=!c.showHomeSummary;
     if(!c.showControls)this.play.hidden=true;
     var attribution=element("span","rr-attribution");
     var meteo=element("a",null,"MeteoSwiss");meteo.href="https://www.meteoswiss.admin.ch/";meteo.target="_blank";meteo.rel="noopener noreferrer";
@@ -101,7 +102,10 @@
     var previous=this.data && this.data.frames[this.index].time;
     this.data=data;this.error="";
     this.homeTimeline=home.analyze(data);
-    this.index=previous===undefined || previous===null?core.nearestIndex(data.frames,data.replay?data.frames[0].time:data.latestObservation):core.nearestIndex(data.frames,previous);
+    this.hasAnimation=data.frames.filter(function(f){return f.available;}).length>1;
+    var observation=this.homeTimeline.frames[this.homeTimeline.latest],initial=observation?observation.time:data.latestObservation;
+    this.index=previous===undefined || previous===null?core.nearestIndex(data.frames,data.replay?data.frames[0].time:initial):core.nearestIndex(data.frames,previous);
+    if(this.playing&&!data.frames[this.index].available&&observation)this.index=this.homeTimeline.latest;
     // Nothing to animate when no frame shows rain: hold the latest observation instead of
     // redrawing identical empty frames several times a second.
     this.dry=!data.replay && data.frames.every(function(f){return home.level(f)===0&&(!f.polygons || !f.polygons.length);});
@@ -113,8 +117,8 @@
     if(!this.data){content(this.homeHeadline,this.error?"Home radar unavailable":"Checking rain at home…");return;}
     var d=this.data,t=this.homeTimeline,f=t.frames[t.latest],now=Date.now()/1000;
     var outlook=home.outlook(t,now),e=outlook.episode,title,detail="",tone=home.state(f);
-    var stale=!d.replay&&now-d.latestObservation>this.config.staleAfterMinutes*60;
-    var source=(d.demo?"DEMO":d.replay?"RECORDING":stale?"OLD RADAR":"LATEST RADAR")+" · "+this.timeLabel(d.latestObservation);
+    var observedTime=f?f.time:d.latestObservation,stale=!d.replay&&now-observedTime>this.config.staleAfterMinutes*60;
+    var source=(d.demo?"DEMO":d.replay?"RECORDING":stale?"OLD RADAR":"LATEST RADAR")+" · "+this.timeLabel(observedTime);
     if(d.replay){
       var wet=t.episodes[0],incomplete=t.frames.some(function(frame){return home.level(frame)===null;});
       tone=wet?home.state(t.frames[wet.peak]):incomplete?"unknown":"dry";
@@ -142,7 +146,7 @@
         }
       }else if(outlook.complete)detail="No rain in forecast through "+this.timeLabel(outlook.end);
       else detail=outlook.end?"Home forecast incomplete":"No home forecast available";
-      if(stale){detail="Updated "+Math.floor((now-d.latestObservation)/60)+" min ago · "+detail;tone="unknown";}
+      if(stale){detail="Updated "+Math.floor((now-observedTime)/60)+" min ago · "+detail;tone="unknown";}
     }
     if(this.homeSummary.dataset.state!==tone)this.homeSummary.dataset.state=tone;
     content(this.homeSource,source);content(this.homeHeadline,title);content(this.homeDetail,detail);
@@ -195,13 +199,14 @@
       if(this.homeMarker.dataset.kind!==f.kind)this.homeMarker.dataset.kind=f.kind;
     }
     if(this.homeFrame.dataset.state!==homeState)this.homeFrame.dataset.state=homeState;
-    if(this.homeFrame.hidden)this.homeFrame.hidden=false;
+    var hideFrame=!this.config.showHomeSummary;
+    if(this.homeFrame.hidden!==hideFrame)this.homeFrame.hidden=hideFrame;
     content(this.homeFrameTitle,wet?home.intensity(f)+" over home":homeState==="dry"?"Dry at home":"Home data unavailable");
     content(this.homeFrameTime,(this.data.demo?"Demo "+kind.toLowerCase():this.data.replay?"Recorded":kind)+" · "+this.timeLabel(f.time));
-    content(this.focus,this.config.adaptivePlayback&&wet?"Following home rain":"");
+    content(this.focus,this.config.showHomeSummary&&this.config.adaptivePlayback&&wet?"Following home rain":"");
     // Only touch the controls when they change: an attribute write re-styles the whole widget.
-    var animating=String(this.playing&&!this.suspended&&!this.dry&&this.data.frames.length>1);
-    var disabled=this.data.frames.length<2||this.dry;
+    var animating=String(this.playing&&!this.suspended&&!this.dry&&this.hasAnimation);
+    var disabled=!this.hasAnimation||this.dry;
     if(this.play.disabled!==disabled)this.play.disabled=disabled;
     content(this.play,this.playing&&!this.dry?"Ⅱ":"▶");
     var playLabel=this.dry?"No rain in the radar window":this.playing?"Pause radar animation":"Play radar animation";
@@ -214,7 +219,8 @@
     var messages=[];
     if(this.error)messages.push(this.error);
     if(this.data){
-      if(!this.data.replay && Date.now()/1000-this.data.latestObservation>this.config.staleAfterMinutes*60)messages.push("Stale radar · last observation "+this.timeLabel(this.data.latestObservation));
+      var observation=this.data.frames[this.homeTimeline.latest],observedTime=observation?observation.time:this.data.latestObservation;
+      if(!this.data.replay && Date.now()/1000-observedTime>this.config.staleAfterMinutes*60)messages.push("Stale radar · last observation "+this.timeLabel(observedTime));
       var f=this.data.frames[this.index];if(f&&!f.available)messages.push("Frame unavailable");
       if(this.data.horizonLimited)messages.push("Forecast available through "+this.timeLabel(this.data.frames[this.data.frames.length-1].time));
       if(this.data.replay)messages.push("Historical observations · "+this.data.label);
@@ -228,9 +234,12 @@
   View.prototype.setError=function(message){this.error=message;this.status();this.renderHomeSummary();};
   View.prototype.schedule=function(){
     clearTimeout(this.timer);this.timer=null;
-    if(this.destroyed||this.suspended||!this.playing||this.dry||!this.data||this.data.frames.length<2)return;
+    if(this.destroyed||this.suspended||!this.playing||this.dry||!this.data||!this.hasAnimation)return;
     var self=this,delay=home.delay(this.homeTimeline,this.index,this.config,this.speed);
-    this.timer=setTimeout(function(){self.index=(self.index+1)%self.data.frames.length;self.draw();self.schedule();},delay);
+    this.timer=setTimeout(function(){
+      do{self.index=(self.index+1)%self.data.frames.length;}while(!self.data.frames[self.index].available);
+      self.draw();self.schedule();
+    },delay);
   };
   View.prototype.setSuspended=function(value){this.suspended=value;this.schedule();if(this.data)this.draw();};
   View.prototype.destroy=function(){this.destroyed=true;clearTimeout(this.timer);clearInterval(this.statusTimer);this.paths=[];};

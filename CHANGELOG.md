@@ -4,13 +4,15 @@
 
 - Adaptive playback speeds through dry home frames, slows for local rain and heavy rain,
   and holds arrival, peak, clearing and the latest observation.
-- A persistent home summary shows measured precipitation and approximate forecast arrival/
-  clearing times independently of the map frame; stale/missing data remain explicit.
-- Blue/amber home halos, dashed forecast rings, a frame caption and shaded home rain windows.
+- Minimal map/timeline presentation with blue/amber home halos, dashed forecast rings
+  and shaded home rain windows. Summary, arrival/clearing estimates and captions are opt-in.
 - Reduced-motion and pause/suspend behavior apply to the halo pulse; constant pacing and
   hiding the summary remain configurable.
 - Dry-day playback requires complete home coverage; unavailable frames cannot appear dry.
 - Demo-only scenarios and browser-verified narrow-layout screenshots.
+- Compact weather spacing keeps the home radar and existing forecast panels in narrow columns.
+- Use the newest usable observation when a manifest advertises a missing image; skip unavailable
+  frames during autoplay. Missing/invalid individual images cannot cancel later downloads.
 
 ## 0.4.0 — Quieter on dry days
 
