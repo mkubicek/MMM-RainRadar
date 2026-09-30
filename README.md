@@ -10,7 +10,9 @@ bars for your configured location. The chart doubles as the animation scrubber.
 - Smooth geographic contours, subtle rivers and configurable labelled markers.
 - One hour of past observations and a **10-hour forecast** by default.
 - Bars represent precipitation intensity classes at your chosen location.
-- Fast playback, pause, drag-to-select and keyboard navigation.
+- Home-focused playback: fast through dry frames, slower over rain, with readable arrival/peak holds.
+- A steady home summary, rain/clearing estimates and an overhead-rain halo.
+- Pause, drag-to-select and keyboard navigation.
 - Optional integrated current weather, 12-hour outlook and three-day forecast.
 - Multiple instances, cached downloads, partial-frame and stale-data indicators.
 - No API key, browser framework, native add-on, build step or runtime npm dependencies.
@@ -121,10 +123,11 @@ is required. Invalid settings produce an explanatory message in the widget.
 | `location` | Zurich city centre | `{ latitude, longitude, label }`; point sampled by bars |
 | `mapCenter` | `null` | `{ latitude, longitude }`; `null` centres on `location` |
 | `mapSpanKm` | `48` | East–west span, 10–700 km; north–south span follows the aspect ratio |
-| `width`, `height` | `460`, `230` | Map size in CSS pixels; full widget also needs about 110 px for header/chart/footer |
+| `width`, `height` | `460`, `230` | Map size in CSS pixels; allow about 190 px for header/home summary/chart/footer, plus optional weather panels |
 | `pixelRatio` | `1` | Rendering scale, 1–2; keep 1 for a Pi, use 2 for a high-DPI display |
 | `markers` | `[]` | Up to 20 `{ latitude, longitude, label, showLabel }` objects |
-| `showLocation` | `true` | Draw a bright dot at the sampled location |
+| `showLocation` | `true` | Draw a bright home dot; rain in the displayed frame adds a halo |
+| `showHomeSummary` | `true` | Show latest home radar conditions and the upcoming local rain outlook |
 | `showLocationLabel` | `false` | Show the location's label |
 | `showMarkerLabels` | `true` | Allow marker labels; individual `showLabel: false` still hides them |
 | `mapStyle` | `"rivers"` | `"rivers"`, `"lakes"`, or `"none"` |
@@ -140,9 +143,10 @@ is required. Invalid settings produce an explanatory message in the widget.
 | `staleAfterMinutes` | `20` | Mark old observations as stale |
 | `autoplay` | `true` | Animate automatically |
 | `respectReducedMotion` | `true` | Disable initial autoplay if the viewer requests reduced motion |
-| `frameInterval` | `480` | Milliseconds per frame at 1× speed |
-| `playbackSpeed` | `4` | Playback speed multiplier, 1–8 |
-| `pauseAtLatest` | `0` | Extra milliseconds to hold the latest observed frame |
+| `adaptivePlayback` | `true` | Speed through dry home frames, slow for local rain and hold key moments; `false` restores constant pacing |
+| `frameInterval` | `480` | Base milliseconds per frame at 1× speed; adaptive playback changes the dwell time |
+| `playbackSpeed` | `4` | Base speed multiplier, 1–8; adaptive rain frames retain minimum readable holds |
+| `pauseAtLatest` | `0` | Extra milliseconds at the latest observation, added to the adaptive hold if enabled |
 | `timeZone`, `locale` | `"Europe/Zurich"`, `"en-GB"` | Time formatting; UI labels remain English |
 
 `location` must fall inside your map. Latitude must be 45–49 and longitude 4–12,
@@ -153,11 +157,40 @@ the first available frame at/after the requested end; shorter availability is sh
 
 ## Reading and controlling the chart
 
+The **AT HOME** summary stays steady while the map animates. It uses the latest
+observation at `location`, with a timestamp. When that point is dry and the model
+shows rain within 90 minutes, the headline switches to an approximate arrival
+countdown. Rain at home takes priority, showing its intensity class and the first
+forecast dry sample when available. The summary updates on data refresh and once
+per minute; it never follows the playback cursor.
+
+The map's separate caption describes **the displayed frame**, including whether
+it is observed or forecast. A blue double halo highlights precipitation over home;
+amber highlights classes of 10 mm/h and above, labelled heavy rain. Forecast halos
+have a dashed inner ring. A gentle opacity pulse runs during playback, respects
+reduced-motion preferences and stops when paused or hidden. These cues remain
+usable in grayscale. Heavy rain is not a confirmation of thunder or lightning.
+
+Rain/clearing times are approximate first wet/dry radar-model samples, subject to
+frame spacing and forecast uncertainty. Missing samples break rain windows and
+suppress confident arrival countdowns. Stale observations use “Last radar” rather
+than a current-condition headline. “Dry” means below the radar's 0.2 mm/h display
+threshold, not a reading from a sensor at the house.
+
 Bars show **intensity classes**, not an exact continuous rainfall rate or an
 accumulation total. A short baseline indicates below 0.2 mm/h. Hollow bars indicate
 unavailable data. The fixed dim line divides observations from forecast; forecast
-bars and their dashed baseline are muted. A small dim dot marks the map frame during
+bars and their dashed baseline are muted. Rain windows are shaded, with blue rain
+bars and amber heavy-rain bars. A small dim dot marks the map frame during
 playback; pausing or scrubbing reveals a brighter line for precise selection.
+
+With default adaptive pacing, dry frames run at about **80 ms**, rain frames at
+least **420 ms**, and heavy rain at least **650 ms**. The first wet frame holds for
+**1.6 seconds**, the first peak for **1.2 seconds**, the last wet sample before a
+known dry sample for at least **0.9 seconds**, and the latest observation for at
+least **1 second**. The end of the loop pauses for at least **0.8 seconds**. Holds
+use the longest applicable delay rather than stacking, with `pauseAtLatest` added
+afterwards. Base speed still affects pacing when it produces a longer delay.
 
 - Click or drag the chart to select a frame and pause.
 - With the chart focused, ← / → step frames; Home / End select the ends.
@@ -177,10 +210,12 @@ intersecting its map. Download concurrency is capped at four and duplicate reque
 are coalesced. Raw and prepared caches have explicit entry/serialized-size budgets.
 Decoded geometry is reused between refreshes and matching instances.
 
-The renderer caches `Path2D` objects and repaints only the rain canvas and frame
-indicator. When no frame in the window shows rain, playback stops and the latest
-observation is held as a still image, so a dry day costs no animation at all. It does not rebuild the widget on each animation frame. The default
-canvas is 460 × 230 at 1× density, running at about 8 frames/second. There are no
+The renderer caches `Path2D` objects and updates the rain canvas, frame caption and
+indicator. When every frame is available and dry and the map has no rain polygons,
+playback stops and the latest observation is held as a still image. Missing coverage
+cannot trigger this dry-day shortcut. It does not rebuild the widget on each animation
+frame, and the home summary remains independent. The default canvas is 460 × 230 at
+1× density; adaptive pacing spends most of its animation time on rain at home. There are no
 frameworks, map engines, continuously spinning render loops or client-side country-
 wide radar decoders. `frameStepMinutes: 10`, `mapStyle: "none"`, or disabling autoplay
 can reduce work further. See [measured Pi results](docs/performance.md).
@@ -193,6 +228,14 @@ narrow 360 px layout with the integrated weather outlook (live MeteoSwiss foreca
 MeteoSwiss radar data from 16 September 2026; it is never substituted for live data.
 Archived 1 km cells are converted into interpolated contours for display; bar values
 continue to come from the original cells.
+
+For an immediate preview of the home UX, open
+`http://localhost:3200/?mode=home&scenario=arrival&layout=column` after starting the
+demo. The scene selector covers approaching rain, rain overhead, heavy rain, dry
+weather, missing home data and stale radar. These scenes are explicitly labelled
+**illustrative**, use public Zurich coordinates, and are never loaded by the live
+provider or MagicMirror module. [Arrival preview](docs/home-arrival.png) ·
+[Heavy rain preview](docs/home-heavy-rain.png).
 
 ```sh
 npm run demo                   # http://localhost:3200 (no installation needed)

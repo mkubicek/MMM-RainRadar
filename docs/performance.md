@@ -33,7 +33,10 @@ all 49 frames; the second reused cached paths. Device/render density was 1×.
 | 95th percentile | 7.7 ms | 6.3 ms |
 | Maximum | 14.2 ms | 11.4 ms |
 
-Default playback allocates **120 ms per frame** (480 ms / 4×).
+These measurements used fixed playback at **120 ms per frame** (480 ms / 4×).
+The current adaptive playback uses about 80 ms for dry frames and at least 420 ms
+for rain over home (650 ms for heavy rain), with longer arrival/peak holds. This
+timing change does not constitute a new Pi performance measurement.
 Measurements time JavaScript/path preparation and Canvas drawing calls with a
 requestAnimationFrame boundary between frames; they do not independently measure
 GPU completion. The entire test renderer process working set was about 80 MiB,

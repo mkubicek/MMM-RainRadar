@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased — Rain at home
+
+- Adaptive playback speeds through dry home frames, slows for local rain and heavy rain,
+  and holds arrival, peak, clearing and the latest observation.
+- A persistent home summary shows measured precipitation and approximate forecast arrival/
+  clearing times independently of the map frame; stale/missing data remain explicit.
+- Blue/amber home halos, dashed forecast rings, a frame caption and shaded home rain windows.
+- Reduced-motion and pause/suspend behavior apply to the halo pulse; constant pacing and
+  hiding the summary remain configurable.
+- Dry-day playback requires complete home coverage; unavailable frames cannot appear dry.
+- Demo-only scenarios and browser-verified narrow-layout screenshots.
+
 ## 0.4.0 — Quieter on dry days
 
 - Hold the latest observation as a still frame when no frame in the window shows rain,

@@ -8,7 +8,7 @@ const fixture=JSON.parse(fs.readFileSync(path.join(root,"demo/rain-replay.json")
 const config=core.normalize({autoplay:false,location:{latitude:47.3769,longitude:8.5417,label:"Zurich"},mapCenter:{latitude:47.39,longitude:8.53},markers:[{latitude:47.3769,longitude:8.5417,label:"Zurich"},{latitude:47.45038,longitude:8.5624,label:"Airport",showLabel:false}]});
 const data=Object.assign({},fixture,{frames:fixture.frames.map(f=>{const g=f.grid,x=Math.floor((config.point[0]-g.e0)/g.cell),y=Math.floor((g.n1-config.point[1])/g.cell);return{time:f.time,kind:f.kind,available:true,polygons:f.polygons,homeLevel:core.levelForRate(g.values[y][x])};})});
 app.whenReady().then(async()=>{
-  const win=new BrowserWindow({width:490,height:400,show:false,webPreferences:{offscreen:true,nodeIntegration:false,contextIsolation:true,backgroundThrottling:false}});
+  const win=new BrowserWindow({width:490,height:520,show:false,webPreferences:{offscreen:true,nodeIntegration:false,contextIsolation:true,backgroundThrottling:false}});
   win.webContents.setFrameRate(60);
   await win.loadFile(path.join(root,"scripts/renderer.html"));
   const result=await win.webContents.executeJavaScript(`(async function(){

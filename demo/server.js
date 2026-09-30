@@ -8,6 +8,7 @@ const {RadarProvider}=require("../lib/provider");
 const {intersects}=require("../lib/geometry");
 const {WeatherProvider}=require("../lib/weather");
 const sampleWeather=require("./weather-fixture");
+const homeFixture=require("./home-fixture");
 const provider=new RadarProvider(),weather=new WeatherProvider();
 const demoConfig=core.normalize({
   location:{latitude:47.3769,longitude:8.5417,label:"Zurich"},
@@ -15,7 +16,7 @@ const demoConfig=core.normalize({
   markers:[{latitude:47.3769,longitude:8.5417,label:"Zurich"},{latitude:47.45038,longitude:8.56240,label:"Airport",showLabel:false}]
 });
 // ?layout=column: a narrow mirror column with the integrated weather outlook.
-const columnConfig=core.normalize(Object.assign({},demoConfig,{width:360,height:225,forecastHours:12,showWeather:true}));
+const columnConfig=core.normalize(Object.assign({},demoConfig,{width:360,height:225,playbackSpeed:2,forecastHours:12,showWeather:true}));
 function configFor(url){return url.searchParams.get("layout")==="column"?columnConfig:demoConfig;}
 const replay=JSON.parse(fs.readFileSync(path.join(__dirname,"rain-replay.json"),"utf8"));
 function historical(config){
@@ -25,7 +26,7 @@ function historical(config){
     return {time:f.time,kind:f.kind,available:true,homeLevel:core.levelForRate(rate),polygons:f.polygons.filter(p=>intersects(p.rings,config.bounds))};
   })});
 }
-const files={"/":"demo/index.html","/demo.js":"demo/demo.js","/core.js":"public/core.js","/view.js":"public/view.js","/weather-view.js":"public/weather-view.js","/style.css":"MMM-RainRadar.css"};
+const files={"/":"demo/index.html","/demo.js":"demo/demo.js","/core.js":"public/core.js","/home.js":"public/home.js","/view.js":"public/view.js","/weather-view.js":"public/weather-view.js","/style.css":"MMM-RainRadar.css"};
 http.createServer(async function(req,res){
   try{
     const url=new URL(req.url,"http://localhost");
@@ -33,7 +34,8 @@ http.createServer(async function(req,res){
     if(url.pathname==="/config"){res.setHeader("Content-Type","application/json");res.end(JSON.stringify(config));return;}
     if(url.pathname==="/weather"){res.setHeader("Content-Type","application/json");res.end(JSON.stringify(url.searchParams.get("mode")==="live"?await weather.forecast(config):sampleWeather(Date.now())));return;}
     if(url.pathname==="/data"){
-      const data=url.searchParams.get("mode")==="live"?await provider.series(config):historical(config);
+      const scenario=url.searchParams.get("scenario");
+      const data=url.searchParams.get("mode")==="home"&&homeFixture.scenarios.indexOf(scenario)!==-1?homeFixture.scene(config,scenario,Date.now()):url.searchParams.get("mode")==="live"?await provider.series(config):historical(config);
       res.setHeader("Content-Type","application/json");res.end(JSON.stringify(data));return;
     }
     if(!files[url.pathname]){res.statusCode=404;res.end("Not found");return;}

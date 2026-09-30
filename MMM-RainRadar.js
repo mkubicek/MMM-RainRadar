@@ -2,7 +2,7 @@
 Module.register("MMM-RainRadar", {
   requiresVersion: "2.18.0",
   defaults: {}, // Shared defaults and validation live in public/core.js.
-  getScripts: function () { return [this.file("public/core.js"), this.file("public/weather-view.js"), this.file("public/view.js")]; },
+  getScripts: function () { return [this.file("public/core.js"), this.file("public/home.js"), this.file("public/weather-view.js"), this.file("public/view.js")]; },
   getStyles: function () { return [this.file("MMM-RainRadar.css")]; },
   start: function () {
     this.weatherData = null; this.weatherError = ""; this.radarData = null; this.radarError = ""; this.radarView = null; this.requestTimer = null; this.radarSuspended = false;

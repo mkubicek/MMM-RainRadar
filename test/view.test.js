@@ -9,4 +9,76 @@ const wet=Object.assign({},data,{frames:frames.map((f,i)=>Object.assign({},f,{po
 test('suspend stops playback timers and resume retains desired playback',()=>{const v=setup({autoplay:true});try{v.setData(wet);assert.ok(v.timer);v.setSuspended(true);assert.equal(v.timer,null);assert.equal(v.playing,true);v.setSuspended(false);assert.ok(v.timer);}finally{v.destroy();assert.equal(v.destroyed,true);}});
 test('marker labels are text, not injected HTML',()=>{const v=setup({markers:[{latitude:47.38,longitude:8.54,label:'<img src=x onerror=alert(1)>'}]});try{assert.equal(v.root.querySelectorAll('img').length,1);assert.ok(v.root.textContent.includes('<img src=x onerror=alert(1)>'));}finally{v.destroy();}});
 test('forecast stays static during radar playback and refreshes independently',()=>{const v=setup({showWeather:true});try{const time=Math.ceil(Date.now()/3600000)*3600;const weather={fetchedAt:Date.now(),current:{time:Date.now()/1000,temp:12,feels:11,wind:2,code:800,night:true,description:'clear sky'},hourly:Array.from({length:14},(_,i)=>({time:time+i*3600,temp:12,wind:2,pop:.2,rain:0,code:800})),daily:[{time:time+86400,date:'2099-01-01',high:20,low:8,pop:.2,rain:0,code:800,wind:2}]};v.setWeather(weather);v.setData(data);const panel=v.weather.panels.firstChild;v.index=1;v.draw();assert.equal(v.weather.panels.firstChild,panel);assert.equal(v.root.querySelectorAll('.rr-weather-hour').length,4);v.setWeatherError('Offline');assert.equal(v.weather.notice.textContent,'Offline');assert.match(v.weather.now.textContent,/12°/);}finally{v.destroy();}});
-test('a dry window holds the latest observation instead of animating',()=>{const v=setup({autoplay:true});try{v.setData(Object.assign({},data,{latestObservation:now+300}));assert.equal(v.timer,null);assert.equal(v.index,1);assert.equal(v.root.dataset.playing,'false');v.setData(wet);assert.ok(v.timer);assert.equal(v.root.dataset.playing,'true');}finally{v.destroy();}});
+test('a dry window holds the latest observation instead of animating',()=>{const v=setup({autoplay:true});try{v.setData(Object.assign({},data,{frames:frames.map(f=>Object.assign({},f,{homeLevel:0})),latestObservation:now+300}));assert.equal(v.timer,null);assert.equal(v.index,1);assert.equal(v.root.dataset.playing,'false');v.setData(wet);assert.ok(v.timer);assert.equal(v.root.dataset.playing,'true');}finally{v.destroy();}});
+const {scene}=require('../demo/home-fixture');
+test('home arrival summary stays fixed while the forecast map shows overhead rain',()=>{
+  const v=setup();try{
+    const d=scene(v.config,'arrival',Date.now());v.setData(d);
+    const headline=v.homeHeadline.textContent,detail=v.homeDetail.textContent;
+    assert.match(headline,/Rain expected in ~\d+ min/);assert.match(detail,/Dry on latest radar · Forecast/);
+    v.index=d.frames.findIndex(f=>f.homeLevel>0);v.draw();
+    assert.equal(v.homeHeadline.textContent,headline);assert.equal(v.homeDetail.textContent,detail);
+    assert.match(v.homeFrameTitle.textContent,/rain over home/i);
+    assert.equal(v.homeMarker.dataset.state,'rain');assert.equal(v.homeMarker.dataset.kind,'forecast');
+    assert.match(v.slider.getAttribute('aria-valuetext'),/At home: Light rain/);
+  }finally{v.destroy();}
+});
+test('heavy rain at home gets a measured intensity and a forecast clearing time',()=>{
+  const v=setup();try{v.setData(scene(v.config,'heavy',Date.now()));
+    assert.equal(v.homeHeadline.textContent,'Heavy rain at home');
+    assert.match(v.homeDetail.textContent,/20–40 mm\/h · Dry again ~.+ · Forecast/);
+    assert.equal(v.homeSummary.dataset.state,'heavy');assert.equal(v.homeMarker.dataset.state,'heavy');
+    assert.ok(v.root.querySelector('.rr-home-window'));assert.ok(v.root.querySelector('.rr-bar.rr-heavy'));
+  }finally{v.destroy();}
+});
+test('missing latest home sample is unavailable while known forecast rain remains visible',()=>{
+  const v=setup({autoplay:true});try{v.setData(scene(v.config,'missing',Date.now()));
+    assert.equal(v.homeHeadline.textContent,'Home radar unavailable');assert.match(v.homeDetail.textContent,/Rain in forecast/);
+    assert.match(v.homeDetail.textContent,/Gaps before rain/);assert.equal(v.dry,false);
+    assert.match(v.homeFrameTitle.textContent,/unavailable/);
+  }finally{v.destroy();}
+});
+test('stale observation is never presented as current rain',()=>{
+  const v=setup();try{const d=scene(v.config,'stale',Date.now());d.demo=false;v.setData(d);
+    assert.match(v.homeHeadline.textContent,/^Last radar: rain at home/);
+    assert.match(v.homeSource.textContent,/OLD RADAR/);assert.match(v.homeDetail.textContent,/Updated \d+ min ago/);
+  }finally{v.destroy();}
+});
+test('recorded rainfall is labelled as a recording rather than current home conditions',()=>{
+  const v=setup();try{v.setData(Object.assign({},scene(v.config,'heavy',Date.now()),{demo:false,replay:true,label:'16 Sep 2026'}));
+    assert.match(v.homeHeadline.textContent,/in this recording/);assert.match(v.homeSource.textContent,/RECORDING/);
+    assert.match(v.homeFrameTime.textContent,/Recorded/);
+  }finally{v.destroy();}
+});
+test('an entirely dry scene is still and retains the summary and manual scrubber',()=>{
+  const v=setup({autoplay:true});try{v.setData(scene(v.config,'dry',Date.now()));
+    assert.equal(v.homeHeadline.textContent,'Dry at home');assert.match(v.homeDetail.textContent,/No rain in forecast through/);
+    assert.equal(v.timer,null);assert.equal(v.play.disabled,true);assert.equal(v.slider.disabled,false);
+    v.slider.onkeydown({key:'End',preventDefault(){},stopPropagation(){}});
+    assert.equal(v.playing,false);assert.equal(v.index,v.data.frames.length-1);
+  }finally{v.destroy();}
+});
+test('home summary and map marker can be hidden independently',()=>{
+  const v=setup({showHomeSummary:false,showLocation:false});try{v.setData(scene(v.config,'rain',Date.now()));
+    assert.equal(v.homeSummary.hidden,true);assert.equal(v.homeMarker,undefined);assert.match(v.homeFrameTitle.textContent,/Rain over home/);
+  }finally{v.destroy();}
+});
+test('frame unavailable and local coverage gaps cannot freeze as an entirely dry scene',()=>{
+  const v=setup({autoplay:true});try{v.setData({latestObservation:now,frames:[{time:now,kind:'measurement',available:true,homeLevel:0,polygons:[]},{time:now+300,kind:'forecast',available:false,homeLevel:null,polygons:[]}]});
+    assert.equal(v.dry,false);assert.ok(v.timer);assert.match(v.homeDetail.textContent,/incomplete/);
+  }finally{v.destroy();}
+});
+test('refresh updates current home conditions while retaining a paused historical frame',()=>{
+  const v=setup();try{
+    const arrival=scene(v.config,'arrival',Date.now());v.setData(arrival);
+    v.slider.value=arrival.frames[2].time;v.slider.oninput();const selected=v.data.frames[v.index].time;
+    v.setData(scene(v.config,'heavy',Date.now()));
+    assert.equal(v.playing,false);assert.equal(v.data.frames[v.index].time,selected);
+    assert.equal(v.homeHeadline.textContent,'Heavy rain at home');assert.equal(v.homeFrameTitle.textContent,'Dry at home');
+  }finally{v.destroy();}
+});
+test('a recording with missing home data cannot claim dry conditions',()=>{
+  const v=setup();try{v.setData({latestObservation:now,replay:true,label:'Archived',frames:[{time:now,kind:'measurement',available:false,homeLevel:null,polygons:[]}]});
+    assert.match(v.homeHeadline.textContent,/incomplete/);assert.equal(v.homeSummary.dataset.state,'unknown');
+  }finally{v.destroy();}
+});
