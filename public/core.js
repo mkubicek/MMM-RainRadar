@@ -21,7 +21,7 @@
     mapStyle: "rivers", mapOpacity: 0.65, rainOpacity: 0.9,
     pastMinutes: 60, forecastHours: 10, frameStepMinutes: 5,
     updateInterval: 300000, staleAfterMinutes: 20,
-    autoplay: true, respectReducedMotion: true, adaptivePlayback: true, interpolate: true, showHomeSummary: false,
+    autoplay: true, respectReducedMotion: true, adaptivePlayback: true, interpolate: true, showHomeStatus: true, showHomeSummary: false,
     frameInterval: 480, playbackSpeed: 4, loopDuration: 4000, glideFps: 20,
     pauseAtLatest: 0, timeZone: "Europe/Zurich", locale: "en-GB"
   };
@@ -57,7 +57,7 @@
     Object.keys(DEFAULTS).forEach(function (key) { c[key] = input[key] === undefined ? DEFAULTS[key] : input[key]; });
     c.location = location(c.location, "location");
     c.mapCenter = c.mapCenter === null ? c.location : location(c.mapCenter, "mapCenter");
-    ["showLocation", "showLocationLabel", "showMarkerLabels", "showHeader", "showControls", "showLegend", "showWeather", "showHomeSummary", "adaptivePlayback", "interpolate", "autoplay", "respectReducedMotion"].forEach(function (key) {
+    ["showLocation", "showLocationLabel", "showMarkerLabels", "showHeader", "showControls", "showLegend", "showWeather", "showHomeStatus", "showHomeSummary", "adaptivePlayback", "interpolate", "autoplay", "respectReducedMotion"].forEach(function (key) {
       if (typeof c[key] !== "boolean") throw new Error(key + " must be true or false");
     });
     [["width",200,1600],["height",100,1000],["pixelRatio",1,2],["mapSpanKm",10,700],["pastMinutes",0,180],

@@ -148,3 +148,29 @@ test('interpolation can be turned off',t=>{
   t.mock.timers.enable({apis:['setTimeout']});
   const {v,calls}=glideSetup(t,{interpolate:false});try{v.setData(wet);t.mock.timers.tick(3000);assert.equal(calls.length,0);}finally{v.destroy();}
 });
+test('timeline labels upcoming rain, heavy peak and clearing, not past moments',()=>{
+  const v=setup();try{
+    const levels=[1,0,0,0,0,0,2,3,7,3,0],fs=levels.map((level,i)=>({time:now+(i-2)*300,kind:i<=2?'measurement':'forecast',available:true,homeLevel:level,polygons:[]}));
+    v.setData({latestObservation:now,frames:fs,partial:false,replay:false});
+    const labels=Array.from(v.chart.querySelectorAll('text.rr-event')).map(t=>t.textContent);
+    assert.deepEqual(labels,['Rain '+v.timeLabel(now+1200),'Heavy '+v.timeLabel(now+1800),'Dry '+v.timeLabel(now+2400)]);
+    assert.equal(v.chart.querySelectorAll('line.rr-event-tick').length,3);
+  }finally{v.destroy();}
+});
+test('home status line says when rain arrives and clears, or that it rains now',()=>{
+  const v=setup();try{
+    const series=levels=>({latestObservation:now,partial:false,replay:false,frames:levels.map((level,i)=>({time:now+i*600,kind:i?'forecast':'measurement',available:true,homeLevel:level,polygons:[]}))});
+    v.setData(series([0,0,0,0,1,2,0,0]));
+    assert.match(v.homeStatusTitle.textContent,/^Light rain in (39|40) min$/);
+    assert.equal(v.homeStatusDetail.textContent,'from '+v.timeLabel(now+2400)+' · dry ~'+v.timeLabel(now+3600));
+    assert.equal(v.homeStatus.dataset.state,'rain');
+    v.setData(series([3,3,7,3,0,0]));
+    assert.equal(v.homeStatusTitle.textContent,'Rain now');
+    assert.equal(v.homeStatusDetail.textContent,'heavy ~'+v.timeLabel(now+1200)+' · dry ~'+v.timeLabel(now+2400));
+    v.setData(series([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,6,0]));
+    assert.match(v.homeStatusTitle.textContent,/^Heavy rain ~/);assert.match(v.homeStatusDetail.textContent,/^in 2\.5 h · dry ~/);
+    v.setData(series([0,0,0]));
+    assert.equal(v.homeStatusTitle.textContent,'Dry');assert.equal(v.homeStatusDetail.textContent,'through '+v.timeLabel(now+1200));
+  }finally{v.destroy();}
+});
+test('home status line can be hidden',()=>{const v=setup({showHomeStatus:false});try{assert.equal(v.homeStatus.hidden,true);}finally{v.destroy();}});

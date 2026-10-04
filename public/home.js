@@ -42,6 +42,18 @@
     var gap=episode?frames.some(function(f,i){return i>latest&&i<episode.first&&f.time>after&&level(f)===null;}):future.some(function(f){return level(f)===null;});
     return {episode:episode||null,gap:gap,complete:future.length>0&&future.every(function(f){return level(f)!==null;}),end:future.length?future[future.length-1].time:null};
   }
+  // Arrival, peak and clearing at home as [{index, kind}], shared by playback holds and chart
+  // labels. A dry gap of up to 15 minutes is a lull, not a new arrival and clearing.
+  function moments(timeline){
+    var frames=timeline.frames,result=[];
+    var lull=function(a,b){return a&&b&&a.end!==null&&frames[b.first].time-frames[a.end].time<=900;};
+    timeline.episodes.forEach(function(e,k,all){
+      if(e.startKnown&&!lull(all[k-1],e))result.push({index:e.first,kind:"arrival"});
+      if(e.peak!==e.first&&level(frames[e.peak])>=4)result.push({index:e.peak,kind:"peak"});
+      if(e.end!==null&&!lull(e,all[k+1]))result.push({index:e.end,kind:"clearing"});
+    });
+    return result;
+  }
   // One playback loop as [{index, ms}]. Adaptive playback spends loopDuration on motion, spread
   // evenly over frames sampled densest near now and in home rain, then adds holds at the latest
   // observation and at home arrival, peak and clearing (together at most loopDuration again).
@@ -57,13 +69,7 @@
       var budget=config.loopDuration,hold={};
       var add=function(i,share){if(frames[i].available)hold[i]=Math.max(hold[i]||0,budget*share);};
       if(latest>=0)add(latest,0.15);
-      // A dry gap of up to 15 minutes is a lull, not a new arrival and clearing.
-      var lull=function(a,b){return a&&b&&a.end!==null&&frames[b.first].time-frames[a.end].time<=900;};
-      timeline.episodes.forEach(function(e,k,all){
-        if(e.startKnown&&!lull(all[k-1],e))add(e.first,0.18);
-        if(e.peak!==e.first&&level(frames[e.peak])>=4)add(e.peak,0.1);
-        if(e.end!==null&&!lull(e,all[k+1]))add(e.end,0.1);
-      });
+      moments(timeline).forEach(function(m){add(m.index,m.kind==="arrival"?0.18:0.1);});
       var held=Object.keys(hold),holdTotal=held.reduce(function(sum,i){return sum+hold[i];},0);
       if(holdTotal>budget)held.forEach(function(i){hold[i]*=budget/holdTotal;});
       var rest=budget,count=Math.max(2,Math.min(usable.length,Math.floor(rest/(config.interpolate?160:80))));
@@ -85,5 +91,5 @@
     result.forEach(function(s){if(s.index===latest)s.ms+=config.pauseAtLatest;});
     return result;
   }
-  return {level:level,state:state,intensity:intensity,analyze:analyze,outlook:outlook,plan:plan};
+  return {level:level,state:state,intensity:intensity,analyze:analyze,outlook:outlook,moments:moments,plan:plan};
 }));

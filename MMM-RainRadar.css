@@ -38,6 +38,10 @@
 .rr-widget .rr-bar.rr-forecast { fill-opacity: .32; }
 .rr-widget .rr-home-window { fill: #91bdd2; fill-opacity: .09; }
 .rr-widget .rr-home-window.rr-heavy { fill: #e1ba7d; }
+.rr-widget .rr-event-tick { stroke: #91bdd2; stroke-width: 1; opacity: .7; }
+.rr-widget .rr-event-tick.rr-heavy { stroke: #e1ba7d; }
+.rr-widget .rr-chart-wrap text.rr-event { font-size: 9px; fill: #b5d5e4; paint-order: stroke; stroke: #000; stroke-width: 2px; }
+.rr-widget .rr-chart-wrap text.rr-event.rr-heavy { fill: #e1ba7d; }
 .rr-widget .rr-bar.rr-missing { fill: none; stroke: #777; stroke-width: .8; }
 .rr-widget .rr-baseline { stroke: #333; stroke-width: 1; }
 .rr-widget .rr-future-line { stroke-dasharray: 3 4; }
@@ -62,6 +66,17 @@
 .rr-widget .rr-legend span { flex: 1; border-top: 2px solid transparent; padding-top: 3px; opacity: .6; }
 .rr-widget[data-playing=true] .rr-time::before { content: ''; display: inline-block; width: 2px; height: 2px; margin-right: 6px; border-radius: 50%; background: #666; }
 .rr-widget [hidden] { display: none !important; }
+/* Home status line, right of the current weather. */
+.rr-widget .rr-top { display: flex; align-items: center; gap: 10px; }
+.rr-widget .rr-top > .rr-weather-now { flex: 1 1 auto; min-width: 0; }
+.rr-widget .rr-home-status { margin: 0 0 4px auto; padding: 1px 0 1px 8px; border-left: 2px solid #444; text-align: left; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+.rr-widget .rr-home-status-title { display: block; color: #aaa; font-size: 14px; line-height: 1.35; }
+.rr-widget .rr-home-status-detail { display: block; color: #777; font-size: 10px; line-height: 1.4; }
+.rr-widget .rr-home-status[data-state=rain] { border-color: #91bdd2; }
+.rr-widget .rr-home-status[data-state=rain] .rr-home-status-title { color: #b5d5e4; }
+.rr-widget .rr-home-status[data-state=heavy] { border-color: #e1ba7d; }
+.rr-widget .rr-home-status[data-state=heavy] .rr-home-status-title { color: #e1ba7d; }
+.rr-widget .rr-home-status[data-state=unknown] .rr-home-status-title { color: #888; }
 /* Forecast panels stay still while radar frames advance. */
 .rr-widget .rr-weather-now { display:flex; align-items:center; gap:10px; min-height:34px; margin-bottom:4px; font-size:12px; }
 .rr-widget .rr-weather-icon { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:1.3; stroke-linecap:round; stroke-linejoin:round; flex-shrink:0; color:#999; }

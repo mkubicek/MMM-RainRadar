@@ -145,6 +145,7 @@ is required. Invalid settings produce an explanatory message in the widget.
 | `respectReducedMotion` | `true` | Disable initial autoplay if the viewer requests reduced motion |
 | `adaptivePlayback` | `true` | Keep the loop short and pause at home arrival, peak and clearing; `false` restores constant pacing through every frame |
 | `loopDuration` | `4000` | Adaptive playback: milliseconds of motion per loop, 2000–60000; pauses add at most the same again |
+| `showHomeStatus` | `true` | One line next to the current weather: “Light rain in 25 min · from 20:30 · dry ~21:05”, “Rain now · dry ~22:25” or “Dry through 06:00” |
 | `interpolate` | `true` | Glide between shown frames: both slide along the estimated rain motion (up to 30-minute gaps) and blend; `false` cuts between frames |
 | `glideFps` | `20` | Glide images per second, 5–60; each one redraws the mirror, so lower values save CPU on a Raspberry Pi |
 | `frameInterval` | `480` | Constant playback: milliseconds per frame at 1× speed |
@@ -163,6 +164,11 @@ the first available frame at/after the requested end; shorter availability is sh
 The default view shows the map with a simple home dot, home precipitation bars and
 timestamp. Blue bars indicate rain over home; amber bars indicate classes of 10 mm/h
 and above. Heavy rain is not a confirmation of thunder or lightning.
+
+The timeline labels upcoming moments at home where playback pauses: **Rain 20:30**
+when rain arrives, **Peak** or **Heavy** at a peak of 4 mm/h or more, and **Dry 22:25**
+when it clears. The status line next to the current weather says the same in words.
+Both use the latest observation and the forecast, so they can be off by a frame step.
 
 Set `showHomeSummary: true` for a steady current-condition summary, approximate
 forecast arrival/clearing times and a separate map-frame caption. This summary uses

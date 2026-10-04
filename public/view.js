@@ -29,6 +29,11 @@
     var self=this,c=this.config,r=this.root;
     r.classList.add("rr-widget");r.style.width=c.width+"px";r.setAttribute("aria-label","Rain radar");
     if(c.showWeather)this.weather=new weather.Forecast(r,c);
+    // One glanceable line about rain at home, next to the current weather when it is shown.
+    this.homeStatus=element("div","rr-home-status");this.homeStatus.hidden=!c.showHomeStatus;this.homeStatus.setAttribute("role","status");
+    this.homeStatusTitle=element("span","rr-home-status-title","");this.homeStatusDetail=element("span","rr-home-status-detail","");
+    this.homeStatus.appendChild(this.homeStatusTitle);this.homeStatus.appendChild(this.homeStatusDetail);
+    var top=element("div","rr-top");if(this.weather)top.appendChild(this.weather.now);top.appendChild(this.homeStatus);r.appendChild(top);
     this.homeSummary=element("div","rr-home-summary");this.homeSummary.hidden=!c.showHomeSummary;
     this.homeSummary.setAttribute("role","status");this.homeSummary.setAttribute("aria-atomic","true");
     var heading=element("div","rr-home-heading");heading.appendChild(element("span",null,"AT HOME"));
@@ -109,8 +114,35 @@
     this.paths=new Array(data.frames.length);this.frameCanvases=new Array(data.frames.length);this.masks={};this.vectors={};
     this.glideMs=this.plan.length?Math.min.apply(null,this.plan.map(function(s){return s.ms;})):0;this.renderChart();this.renderHomeSummary();this.draw();this.schedule();this.status();
   };
+  // "Light rain in 85 min / from 20:30 · dry ~21:05": what the latest radar and forecast say
+  // about home, using the same arrival and clearing moments the timeline labels show.
+  View.prototype.renderHomeStatus=function(){
+    var t=this.homeTimeline,frames=t.frames,f=frames[t.latest],now=Date.now()/1000,self=this,title,detail="",tone;
+    var at=function(i){return self.timeLabel(frames[i].time);};
+    var moments=home.moments(t),clearingAfter=function(i){var m=moments.find(function(x){return x.kind==="clearing"&&x.index>i;});return m?m.index:null;};
+    var n=home.level(f),observed=f?f.time:this.data.latestObservation;
+    if(n===null){title="Home radar unavailable";tone="unknown";}
+    else if(n>0){
+      var current=t.byFrame[t.latest],dry=clearingAfter(t.latest);
+      tone=home.state(f);title=(n>=6?"Heavy rain":n<=2?"Light rain":"Rain")+" now";
+      var heavyLater=current&&current.peak>t.latest&&home.level(frames[current.peak])>=6;
+      detail=(heavyLater?"heavy ~"+at(current.peak)+" · ":"")+(dry!==null?"dry ~"+at(dry):"through "+at(frames.length-1));
+    }else{
+      var next=t.episodes.find(function(e){return e.first>t.latest;});
+      if(next){
+        var peak=home.level(frames[next.peak]),start=frames[next.first].time,minutes=Math.max(1,Math.round((start-now)/60)),dryAt=clearingAfter(next.first);
+        tone=peak>=6?"heavy":"rain";
+        title=(peak>=6?"Heavy rain":peak<=2?"Light rain":"Rain")+(minutes<=90?" in "+minutes+" min":" ~"+at(next.first));
+        detail=(minutes<=90?"from "+at(next.first):"in "+Math.round(minutes/30)/2+" h")+(dryAt!==null?" · dry ~"+at(dryAt):"");
+      }else{title="Dry";tone="dry";detail="through "+at(frames.length-1);}
+    }
+    if(!this.data.replay&&now-observed>this.config.staleAfterMinutes*60){tone="unknown";detail="Radar from "+this.timeLabel(observed)+(detail?" · "+detail:"");}
+    if(this.homeStatus.dataset.state!==tone)this.homeStatus.dataset.state=tone;
+    content(this.homeStatusTitle,title);content(this.homeStatusDetail,detail);
+  };
   View.prototype.renderHomeSummary=function(){
     if(this.destroyed)return;
+    if(this.data)this.renderHomeStatus();
     if(!this.data){content(this.homeHeadline,this.error?"Home radar unavailable":"Checking rain at home…");return;}
     var d=this.data,t=this.homeTimeline,f=t.frames[t.latest],now=Date.now()/1000;
     var outlook=home.outlook(t,now),e=outlook.episode,title,detail="",tone=home.state(f);
@@ -170,6 +202,17 @@
     if(observed&&forecast)this.chart.appendChild(svg("line",{x1:boundary,x2:boundary,y1:15,y2:40,"class":"rr-boundary"}));
     var step=(last-first)/3600>c.width/40?7200:3600;
     for(var t=Math.ceil(first/step)*step;t<=last;t+=step){var px=this.x(t);var tick=svg("text",{x:px,y:54,"text-anchor":px<25?"start":px>c.width-25?"end":"middle"});tick.textContent=this.timeLabel(t);this.chart.appendChild(tick);}
+    // Upcoming arrival, peak and clearing at home, labelled where playback pauses.
+    var latest=this.homeTimeline.latest,lastLabel=-Infinity;
+    home.moments(this.homeTimeline).forEach(function(m){
+      if(m.index<=latest)return;
+      var px=self.x(frames[m.index].time),heavy=home.level(frames[m.index])>=6;
+      var name=m.kind==="arrival"?"Rain":m.kind==="clearing"?"Dry":heavy?"Heavy":"Peak";
+      self.chart.appendChild(svg("line",{x1:px,x2:px,y1:15,y2:36,"class":"rr-event-tick rr-"+m.kind+(heavy?" rr-heavy":"")}));
+      if(px-lastLabel<48)return;
+      var end=px>c.width-50,label=svg("text",{x:end?px-2:px+2,y:23,"text-anchor":end?"end":"start","class":"rr-event rr-"+m.kind+(heavy?" rr-heavy":"")});
+      label.textContent=name+" "+self.timeLabel(frames[m.index].time);self.chart.appendChild(label);lastLabel=px;
+    });
     this.cursor=svg("g",{"class":"rr-cursor"});this.cursor.appendChild(svg("line",{y1:13,y2:40}));this.cursor.appendChild(svg("circle",{cy:36,r:1.5}));this.chart.appendChild(this.cursor);
     this.slider.min=first;this.slider.max=last;this.slider.disabled=frames.length<2;
   };

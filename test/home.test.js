@@ -44,6 +44,11 @@ test('interpolated playback shows about half as many frames in the same motion b
   const hard=home.plan(t,core.normalize({interpolate:false}),4),soft=home.plan(t,core.normalize({}),4);
   assert.ok(soft.length<hard.length*0.65);assert.ok(Math.abs(total(soft)-total(hard))<1);
 });
+test('moments mark arrival, a strong peak and clearing, ignoring short lulls',()=>{
+  const levels=Array(60).fill(0);for(let i=20;i<40;i++)levels[i]=i===25?0:i>=30&&i<33?6:2;
+  assert.deepEqual(home.moments(long(levels)),[{index:20,kind:'arrival'},{index:30,kind:'peak'},{index:40,kind:'clearing'}]);
+  assert.deepEqual(home.moments(long([0,0,1,1,0,0])).map(m=>m.kind),['arrival','clearing']);
+});
 test('short dry lulls do not add arrival and clearing holds',()=>{
   const levels=Array(157).fill(0);for(let i=30;i<60;i++)levels[i]=i===40||i===50?0:2;
   const p=home.plan(long(levels),core.normalize({}),4),even=Math.min(...p.map(s=>s.ms));

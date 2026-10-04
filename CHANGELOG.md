@@ -10,6 +10,9 @@
   glides between them; the rain motion between frames is estimated from the rendered radar
   and used for gaps up to 30 minutes, with a plain crossfade beyond. Glides run at `glideFps`
   (default 20) from a plain timer; on a Raspberry Pi 4 this costs no more CPU than hard cuts.
+- Timeline labels for upcoming rain arrival, heavy or strong peak and clearing at home, and a
+  home status line next to the current weather (`showHomeStatus`, default on), e.g.
+  “Light rain in 85 min · from 20:30 · dry ~21:05”.
 - Fix: forecast frames use a separate MeteoSwiss colour palette, which was not recognised, so
   forecast rain at home was shown as unavailable. Both palettes now map to the same classes.
 - Minimal map/timeline presentation with a simple home dot, blue/amber precipitation bars
