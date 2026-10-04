@@ -22,7 +22,7 @@
     pastMinutes: 60, forecastHours: 10, frameStepMinutes: 5,
     updateInterval: 300000, staleAfterMinutes: 20,
     autoplay: true, respectReducedMotion: true, adaptivePlayback: true, interpolate: true, showHomeSummary: false,
-    frameInterval: 480, playbackSpeed: 4, loopDuration: 4000,
+    frameInterval: 480, playbackSpeed: 4, loopDuration: 4000, glideFps: 20,
     pauseAtLatest: 0, timeZone: "Europe/Zurich", locale: "en-GB"
   };
   function number(value, name, min, max) {
@@ -62,7 +62,7 @@
     });
     [["width",200,1600],["height",100,1000],["pixelRatio",1,2],["mapSpanKm",10,700],["pastMinutes",0,180],
       ["forecastHours",0,24],["frameStepMinutes",5,60],["updateInterval",60000,3600000],
-      ["staleAfterMinutes",5,180],["frameInterval",100,3000],["loopDuration",2000,60000],["playbackSpeed",1,8],
+      ["staleAfterMinutes",5,180],["frameInterval",100,3000],["loopDuration",2000,60000],["glideFps",5,60],["playbackSpeed",1,8],
       ["pauseAtLatest",0,10000],["mapOpacity",0,1],["rainOpacity",0,1]].forEach(function (spec) {
       number(c[spec[0]], spec[0], spec[1], spec[2]);
     });

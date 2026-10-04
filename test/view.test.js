@@ -130,7 +130,6 @@ function glideSetup(t,options){
   const v=setup(Object.assign({autoplay:true},options)),calls=[];
   const ctx={scale(){},clearRect(){},fill(){},drawImage(){calls.push('draw');},getImageData:(x,y,w,h)=>({data:new Uint8ClampedArray(w*h*4)})};
   window.HTMLCanvasElement.prototype.getContext=()=>ctx;v.ctx=ctx;
-  let clock=0;global.requestAnimationFrame=fn=>setTimeout(()=>{clock+=16;fn(clock);},16);global.cancelAnimationFrame=id=>clearTimeout(id);
   return {v,calls};
 }
 test('interpolation glides into the next planned frame, then shows it',t=>{
@@ -138,13 +137,14 @@ test('interpolation glides into the next planned frame, then shows it',t=>{
   const {v,calls}=glideSetup(t,{});try{
     v.setData(wet);const from=v.index,next=v.plan[(v.plan.findIndex(s=>s.index===from)+1)%v.plan.length].index;
     const advance=ms=>{for(let i=0;i<ms;i+=8)t.mock.timers.tick(8);};
-    advance(v.plan.find(s=>s.index===from).ms-v.glideMs+40);
+    const steps=Math.round(v.glideMs*v.config.glideFps/1000);assert.ok(steps>1);
+    advance(v.plan.find(s=>s.index===from).ms-v.glideMs+v.glideMs/steps+8);
     assert.ok(calls.length>0);assert.equal(v.index,from);
-    advance(v.glideMs+40);assert.equal(v.index,next);
-    v.setSuspended(true);assert.equal(v.glide,null);assert.equal(v.timer,null);
-  }finally{v.destroy();delete global.requestAnimationFrame;delete global.cancelAnimationFrame;}
+    advance(v.glideMs);assert.equal(v.index,next);
+    v.setSuspended(true);assert.equal(v.timer,null);
+  }finally{v.destroy();}
 });
-test('interpolation can be turned off and never runs without animation frames',t=>{
+test('interpolation can be turned off',t=>{
   t.mock.timers.enable({apis:['setTimeout']});
-  const {v,calls}=glideSetup(t,{interpolate:false});try{v.setData(wet);t.mock.timers.tick(3000);assert.equal(calls.length,0);}finally{v.destroy();delete global.requestAnimationFrame;delete global.cancelAnimationFrame;}
+  const {v,calls}=glideSetup(t,{interpolate:false});try{v.setData(wet);t.mock.timers.tick(3000);assert.equal(calls.length,0);}finally{v.destroy();}
 });

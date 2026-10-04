@@ -146,6 +146,7 @@ is required. Invalid settings produce an explanatory message in the widget.
 | `adaptivePlayback` | `true` | Keep the loop short and pause at home arrival, peak and clearing; `false` restores constant pacing through every frame |
 | `loopDuration` | `4000` | Adaptive playback: milliseconds of motion per loop, 2000–60000; pauses add at most the same again |
 | `interpolate` | `true` | Glide between shown frames: both slide along the estimated rain motion (up to 30-minute gaps) and blend; `false` cuts between frames |
+| `glideFps` | `20` | Glide images per second, 5–60; each one redraws the mirror, so lower values save CPU on a Raspberry Pi |
 | `frameInterval` | `480` | Constant playback: milliseconds per frame at 1× speed |
 | `playbackSpeed` | `4` | Constant playback: speed multiplier, 1–8 |
 | `pauseAtLatest` | `0` | Extra milliseconds at the latest observation, in either mode |

@@ -60,15 +60,21 @@ Forecast panels are static during radar playback.
 ## Interpolated playback on the mirror
 
 Measured 4 October 2026 on the same Raspberry Pi 4 with the full mirror running,
-`top` over 30 seconds after a minute of warm-up, CPU per Electron process
-(renderer and GPU), 100% = one core:
+`top` over 45 seconds after a minute of warm-up, CPU of the two busy Electron
+processes (renderer and GPU), 100% = one core. Electron 16 on this Pi composites
+in software (`gpu_compositing: disabled_software`; ignoring the GPU blocklist does
+not enable OpenGL with its Mesa 19.2 driver), so cost follows how often the
+screen changes rather than how much JavaScript runs.
 
 | Playback | Renderer | GPU process |
 | --- | ---: | ---: |
-| `interpolate: false` | 33% | 32% |
-| Interpolated at display rate (~60 fps glides) | 60% | 58% |
-| Interpolated, glides capped at ~30 fps (shipped) | 44% | 41% |
+| Radar paused (`autoplay: false`), rest of the mirror | 22% | 20% |
+| `interpolate: false` (cuts only) | 33% | 31% |
+| Glides at 12 fps | 33% | 33% |
+| **Glides at 20 fps (default `glideFps`)** | **34%** | **32%** |
+| Glides at 30 fps | 43% | 39% |
+| First version: 30 fps via `requestAnimationFrame` | 44% | 41% |
+| First version: display rate via `requestAnimationFrame` | 60% | 58% |
 
-Each glide image makes Electron recomposite the whole mirror window, so the cost
-follows the glide frame rate rather than the blend itself.
-
+Glides are driven by a plain timer: requesting animation frames kept Chromium's
+frame pipeline running at the display rate even when nothing was drawn.

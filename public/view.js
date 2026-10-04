@@ -19,7 +19,7 @@
   function View(root,config){
     this.root=root;this.config=config;this.data=null;this.index=0;this.speed=config.playbackSpeed;
     this.playing=config.autoplay && !(config.respectReducedMotion && window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
-    this.suspended=false;this.destroyed=false;this.paths=[];this.frameCanvases=[];this.masks={};this.vectors={};this.timer=null;this.glide=null;this.error="";this.mapFailed=false;
+    this.suspended=false;this.destroyed=false;this.paths=[];this.frameCanvases=[];this.masks={};this.vectors={};this.timer=null;this.error="";this.mapFailed=false;
     this.format=new Intl.DateTimeFormat(config.locale,{hour:"2-digit",minute:"2-digit",hour12:false,timeZone:config.timeZone});
     this.fullFormat=new Intl.DateTimeFormat(config.locale,{year:"numeric",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit",hour12:false,timeZone:config.timeZone});
     this.build();
@@ -215,7 +215,7 @@
   // Interpolation: planned frames are rendered once to offscreen canvases, then each glide
   // slides both frames along the estimated rain motion and blends them.
   View.prototype.canGlide=function(){
-    return this.config.interpolate&&typeof requestAnimationFrame==="function"&&typeof this.ctx.drawImage==="function"&&
+    return this.config.interpolate&&typeof this.ctx.drawImage==="function"&&
       !(window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   };
   View.prototype.frameCanvas=function(index){
@@ -271,8 +271,6 @@
   View.prototype.setError=function(message){this.error=message;this.status();this.renderHomeSummary();};
   View.prototype.schedule=function(){
     clearTimeout(this.timer);this.timer=null;
-    if(this.glide!==null&&typeof cancelAnimationFrame==="function")cancelAnimationFrame(this.glide);
-    this.glide=null;
     if(this.destroyed||this.suspended||!this.playing||this.dry||!this.data||!this.hasAnimation)return;
     // After a pause or scrub the current frame may not be in the plan: continue from the next planned frame.
     var self=this,plan=this.plan,index=this.index;
@@ -282,26 +280,21 @@
     // Glide into the next planned frame (never across the loop restart); holds stay still first.
     var glide=at>=0&&target>index&&this.canGlide()?Math.min(wait,this.glideMs):0;
     var vector=glide?this.motion(index,target):null;
-    var arrive=function(){self.glide=null;self.index=target;self.draw();self.schedule();};
-    this.timer=setTimeout(function(){
-      self.timer=null;
-      if(!glide){arrive();return;}
-      // About 30 glide images per second: each one recomposites the whole mirror window,
-      // so 60 fps doubled the Pi's renderer and GPU load for little visible gain.
-      var start=null,last=-Infinity,step=function(now){
-        if(start===null)start=now;
-        var f=(now-start)/glide;
-        if(f>=1){arrive();return;}
-        if(now-last>=30){last=now;self.blend(index,target,f,vector);}
-        self.glide=requestAnimationFrame(step);
-      };
-      self.glide=requestAnimationFrame(step);
-    },wait-glide);
+    var arrive=function(){self.timer=null;self.index=target;self.draw();self.schedule();};
+    // Glide images come from a plain timer at glideFps. The Pi composites in software, so
+    // each image costs a full frame; animation-frame callbacks would also keep the frame
+    // pipeline busy at the display rate even when nothing changes.
+    var steps=glide?Math.max(1,Math.round(glide*this.config.glideFps/1000)):0,interval=steps?glide/steps:0,k=0;
+    var step=function(){
+      k++;
+      if(k>=steps){arrive();return;}
+      self.blend(index,target,k/steps,vector);self.timer=setTimeout(step,interval);
+    };
+    this.timer=steps?setTimeout(step,wait-glide+interval):setTimeout(arrive,wait);
   };
   View.prototype.setSuspended=function(value){this.suspended=value;this.schedule();if(this.data)this.draw();};
   View.prototype.destroy=function(){
     this.destroyed=true;clearTimeout(this.timer);clearInterval(this.statusTimer);
-    if(this.glide!==null&&typeof cancelAnimationFrame==="function")cancelAnimationFrame(this.glide);
     this.paths=[];this.frameCanvases=[];this.masks={};this.vectors={};
   };
   // Best whole-pixel shift of rain mask a onto b around a guess, scored by mismatched wet cells.

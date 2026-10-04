@@ -8,7 +8,8 @@
   the loop (previously up to ~100 s for a rainy 12-hour outlook).
 - Motion-blended interpolation (`interpolate`, default on): about 25 frames per loop with
   glides between them; the rain motion between frames is estimated from the rendered radar
-  and used for gaps up to 30 minutes, with a plain crossfade beyond.
+  and used for gaps up to 30 minutes, with a plain crossfade beyond. Glides run at `glideFps`
+  (default 20) from a plain timer; on a Raspberry Pi 4 this costs no more CPU than hard cuts.
 - Fix: forecast frames use a separate MeteoSwiss colour palette, which was not recognised, so
   forecast rain at home was shown as unavailable. Both palettes now map to the same classes.
 - Minimal map/timeline presentation with a simple home dot, blue/amber precipitation bars
