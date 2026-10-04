@@ -121,3 +121,30 @@ test('a single usable observation is held without pretending there is an animati
     ]});assert.equal(v.timer,null);assert.equal(v.root.dataset.playing,'false');assert.equal(v.play.disabled,true);
   }finally{v.destroy();}
 });
+test('motion search recovers how far a rain cell moved',()=>{
+  const {shift}=require('../public/view');const w=60,h=30,blob=(cx,cy)=>{const m=new Uint8Array(w*h);for(let y=0;y<h;y++)for(let x=0;x<w;x++)m[y*w+x]=(x-cx)**2+((y-cy)*1.5)**2<36?1:0;return m;};
+  assert.deepEqual(shift(blob(20,12),blob(27,15),w,h,[0,0],10,6),[7,3]);
+  assert.equal(shift(new Uint8Array(w*h),new Uint8Array(w*h),w,h,[0,0],10,6),null);
+});
+function glideSetup(t,options){
+  const v=setup(Object.assign({autoplay:true},options)),calls=[];
+  const ctx={scale(){},clearRect(){},fill(){},drawImage(){calls.push('draw');},getImageData:(x,y,w,h)=>({data:new Uint8ClampedArray(w*h*4)})};
+  window.HTMLCanvasElement.prototype.getContext=()=>ctx;v.ctx=ctx;
+  let clock=0;global.requestAnimationFrame=fn=>setTimeout(()=>{clock+=16;fn(clock);},16);global.cancelAnimationFrame=id=>clearTimeout(id);
+  return {v,calls};
+}
+test('interpolation glides into the next planned frame, then shows it',t=>{
+  t.mock.timers.enable({apis:['setTimeout']});
+  const {v,calls}=glideSetup(t,{});try{
+    v.setData(wet);const from=v.index,next=v.plan[(v.plan.findIndex(s=>s.index===from)+1)%v.plan.length].index;
+    const advance=ms=>{for(let i=0;i<ms;i+=8)t.mock.timers.tick(8);};
+    advance(v.plan.find(s=>s.index===from).ms-v.glideMs+40);
+    assert.ok(calls.length>0);assert.equal(v.index,from);
+    advance(v.glideMs+40);assert.equal(v.index,next);
+    v.setSuspended(true);assert.equal(v.glide,null);assert.equal(v.timer,null);
+  }finally{v.destroy();delete global.requestAnimationFrame;delete global.cancelAnimationFrame;}
+});
+test('interpolation can be turned off and never runs without animation frames',t=>{
+  t.mock.timers.enable({apis:['setTimeout']});
+  const {v,calls}=glideSetup(t,{interpolate:false});try{v.setData(wet);t.mock.timers.tick(3000);assert.equal(calls.length,0);}finally{v.destroy();delete global.requestAnimationFrame;delete global.cancelAnimationFrame;}
+});

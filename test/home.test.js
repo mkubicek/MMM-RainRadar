@@ -21,17 +21,41 @@ test('missing forecast after a wet window does not become a complete outlook',()
   const t=timeline([0,0,2,3,null]);
   assert.equal(home.outlook(t,400).gap,false);assert.equal(home.outlook(t,400).complete,false);
 });
-test('adaptive pace makes home rain readable and holds arrival and peak once per window',()=>{
-  const t=timeline([0,0,1,3,7,7,2,0]),c=core.normalize({playbackSpeed:2});
-  const delays=t.frames.map((_,i)=>home.delay(t,i,c,c.playbackSpeed));
-  assert.ok(delays[0]<delays[3]);assert.ok(delays[3]<delays[5]);
-  assert.ok(delays[2]>=1600);assert.ok(delays[4]>=1200);
-  assert.ok(delays[5]<delays[4]);assert.ok(delays[6]>=900);
-  assert.ok(delays[1]>=1000);assert.ok(delays[7]>=800);
+function long(levels,latest=12){return home.analyze({latestObservation:latest*300,frames:levels.map((level,i)=>({time:i*300,kind:i<=latest?'measurement':'forecast',available:level!==null,homeLevel:level}))});}
+const total=p=>p.reduce((sum,s)=>sum+s.ms,0);
+test('adaptive loop length does not grow with rain duration',()=>{
+  const c=core.normalize({}),dry=Array(157).fill(0),wet=Array(157).fill(7);
+  assert.ok(Math.abs(total(home.plan(long(dry),c,4))-4600)<1);
+  assert.ok(Math.abs(total(home.plan(long(wet),c,4))-total(home.plan(long(wet.map((_,i)=>i<40?7:0)),c,4))+400)<1);
+  const showers=dry.map((_,i)=>Math.floor(i/6)%2?2:0);assert.ok(total(home.plan(long(showers),c,4))<=8000+1);
+  assert.ok(Math.abs(total(home.plan(long(dry),core.normalize({loopDuration:10000}),4))-11500)<1);
+});
+test('adaptive loop holds latest, arrival, peak and clearing and samples densest near now',()=>{
+  const levels=Array(157).fill(0);for(let i=60;i<84;i++)levels[i]=i>=70&&i<74?7:3;
+  const t=long(levels),p=home.plan(t,core.normalize({}),4),ms=i=>(p.find(s=>s.index===i)||{}).ms;
+  const even=Math.min(...p.map(s=>s.ms));
+  for(const i of [12,60,70,84])assert.ok(ms(i)>even*3,'hold at '+i);
+  const gaps=p.slice(1).map((s,k)=>s.index-p[k].index),near=gaps.filter((g,k)=>p[k].index>=12&&p[k].index<24),far=gaps.filter((g,k)=>p[k].index>100);
+  assert.ok(Math.max(...near)<Math.min(...far));
+  assert.ok(even>=60);
+});
+test('interpolated playback shows about half as many frames in the same motion budget',()=>{
+  const levels=Array(157).fill(0).map((_,i)=>i>=60&&i<84?3:0),t=long(levels);
+  const hard=home.plan(t,core.normalize({interpolate:false}),4),soft=home.plan(t,core.normalize({}),4);
+  assert.ok(soft.length<hard.length*0.65);assert.ok(Math.abs(total(soft)-total(hard))<1);
+});
+test('short dry lulls do not add arrival and clearing holds',()=>{
+  const levels=Array(157).fill(0);for(let i=30;i<60;i++)levels[i]=i===40||i===50?0:2;
+  const p=home.plan(long(levels),core.normalize({}),4),even=Math.min(...p.map(s=>s.ms));
+  assert.deepEqual(p.filter(s=>s.ms>even*3).map(s=>s.index),[12,30,60]);
+});
+test('unavailable frames are never planned',()=>{
+  const levels=Array(40).fill(0);levels[5]=null;levels[20]=null;
+  for(const cfg of [{},{adaptivePlayback:false}])assert.ok(home.plan(long(levels),core.normalize(cfg),4).every(s=>s.index!==5&&s.index!==20));
 });
 test('constant playback opt-out and configured latest hold remain available',()=>{
   const t=timeline([0,0,6,0]),c=core.normalize({adaptivePlayback:false,pauseAtLatest:500});
-  assert.deepEqual(t.frames.map((_,i)=>home.delay(t,i,c,4)),[120,620,120,120]);
+  assert.deepEqual(home.plan(t,c,4).map(s=>s.ms),[120,620,120,120]);
 });
 test('unknown, dry and heavy rain have distinct states without a thunderstorm claim',()=>{
   assert.equal(home.state({available:false,homeLevel:0}),'unknown');

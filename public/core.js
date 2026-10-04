@@ -11,6 +11,8 @@
     { color: "f87c00", lower: 20, upper: 40 }, { color: "f70c00", lower: 40, upper: 60 },
     { color: "ac00db", lower: 60, upper: null }
   ];
+  // Forecast frames use their own palette for the same classes (the 60+ mm/h colour has not been observed).
+  var FORECAST_COLORS = ["9a7e95", "0001fc", "058c2d", "05ff05", "feff01", "ffc703", "ff7d01", "ff1900"];
   var DEFAULTS = {
     location: { latitude: 47.3769, longitude: 8.5417, label: "Location" },
     mapCenter: null, mapSpanKm: 48, width: 460, height: 230, pixelRatio: 1,
@@ -19,8 +21,8 @@
     mapStyle: "rivers", mapOpacity: 0.65, rainOpacity: 0.9,
     pastMinutes: 60, forecastHours: 10, frameStepMinutes: 5,
     updateInterval: 300000, staleAfterMinutes: 20,
-    autoplay: true, respectReducedMotion: true, adaptivePlayback: true, showHomeSummary: false,
-    frameInterval: 480, playbackSpeed: 4,
+    autoplay: true, respectReducedMotion: true, adaptivePlayback: true, interpolate: true, showHomeSummary: false,
+    frameInterval: 480, playbackSpeed: 4, loopDuration: 4000,
     pauseAtLatest: 0, timeZone: "Europe/Zurich", locale: "en-GB"
   };
   function number(value, name, min, max) {
@@ -55,12 +57,12 @@
     Object.keys(DEFAULTS).forEach(function (key) { c[key] = input[key] === undefined ? DEFAULTS[key] : input[key]; });
     c.location = location(c.location, "location");
     c.mapCenter = c.mapCenter === null ? c.location : location(c.mapCenter, "mapCenter");
-    ["showLocation", "showLocationLabel", "showMarkerLabels", "showHeader", "showControls", "showLegend", "showWeather", "showHomeSummary", "adaptivePlayback", "autoplay", "respectReducedMotion"].forEach(function (key) {
+    ["showLocation", "showLocationLabel", "showMarkerLabels", "showHeader", "showControls", "showLegend", "showWeather", "showHomeSummary", "adaptivePlayback", "interpolate", "autoplay", "respectReducedMotion"].forEach(function (key) {
       if (typeof c[key] !== "boolean") throw new Error(key + " must be true or false");
     });
     [["width",200,1600],["height",100,1000],["pixelRatio",1,2],["mapSpanKm",10,700],["pastMinutes",0,180],
       ["forecastHours",0,24],["frameStepMinutes",5,60],["updateInterval",60000,3600000],
-      ["staleAfterMinutes",5,180],["frameInterval",100,3000],["playbackSpeed",1,8],
+      ["staleAfterMinutes",5,180],["frameInterval",100,3000],["loopDuration",2000,60000],["playbackSpeed",1,8],
       ["pauseAtLatest",0,10000],["mapOpacity",0,1],["rainOpacity",0,1]].forEach(function (spec) {
       number(c[spec[0]], spec[0], spec[1], spec[2]);
     });
@@ -83,7 +85,9 @@
     return [(point[0]-bounds.west)/(bounds.east-bounds.west)*width, (bounds.north-point[1])/(bounds.north-bounds.south)*height];
   }
   function levelForColor(color) {
-    var match = SCALE.findIndex(function (c) { return c.color === color.toLowerCase(); });
+    color = color.toLowerCase();
+    var match = SCALE.findIndex(function (c) { return c.color === color; });
+    if (match < 0) match = FORECAST_COLORS.indexOf(color);
     return match < 0 ? null : match + 1;
   }
   function levelForRate(rate) {

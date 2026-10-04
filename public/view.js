@@ -19,7 +19,7 @@
   function View(root,config){
     this.root=root;this.config=config;this.data=null;this.index=0;this.speed=config.playbackSpeed;
     this.playing=config.autoplay && !(config.respectReducedMotion && window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
-    this.suspended=false;this.destroyed=false;this.paths=[];this.timer=null;this.error="";this.mapFailed=false;
+    this.suspended=false;this.destroyed=false;this.paths=[];this.frameCanvases=[];this.masks={};this.vectors={};this.timer=null;this.glide=null;this.error="";this.mapFailed=false;
     this.format=new Intl.DateTimeFormat(config.locale,{hour:"2-digit",minute:"2-digit",hour12:false,timeZone:config.timeZone});
     this.fullFormat=new Intl.DateTimeFormat(config.locale,{year:"numeric",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit",hour12:false,timeZone:config.timeZone});
     this.build();
@@ -97,7 +97,7 @@
     if(!data || !Array.isArray(data.frames) || !data.frames.length){this.setError("No radar frames available");return;}
     var previous=this.data && this.data.frames[this.index].time;
     this.data=data;this.error="";
-    this.homeTimeline=home.analyze(data);
+    this.homeTimeline=home.analyze(data);this.plan=home.plan(this.homeTimeline,this.config,this.speed);
     this.hasAnimation=data.frames.filter(function(f){return f.available;}).length>1;
     var observation=this.homeTimeline.frames[this.homeTimeline.latest],initial=observation?observation.time:data.latestObservation;
     this.index=previous===undefined || previous===null?core.nearestIndex(data.frames,data.replay?data.frames[0].time:initial):core.nearestIndex(data.frames,previous);
@@ -106,7 +106,8 @@
     // redrawing identical empty frames several times a second.
     this.dry=!data.replay && data.frames.every(function(f){return home.level(f)===0&&(!f.polygons || !f.polygons.length);});
     if(this.dry&&this.playing)this.index=core.nearestIndex(data.frames,data.latestObservation);
-    this.paths=new Array(data.frames.length);this.renderChart();this.renderHomeSummary();this.draw();this.schedule();this.status();
+    this.paths=new Array(data.frames.length);this.frameCanvases=new Array(data.frames.length);this.masks={};this.vectors={};
+    this.glideMs=this.plan.length?Math.min.apply(null,this.plan.map(function(s){return s.ms;})):0;this.renderChart();this.renderHomeSummary();this.draw();this.schedule();this.status();
   };
   View.prototype.renderHomeSummary=function(){
     if(this.destroyed)return;
@@ -174,17 +175,8 @@
   };
   View.prototype.draw=function(){
     if(!this.data || this.destroyed)return;
-    var f=this.data.frames[this.index],c=this.config,ctx=this.ctx;
-    ctx.clearRect(0,0,c.width,c.height);
-    if(f.available){
-      var self=this;
-      if(!this.paths[this.index])this.paths[this.index]=(f.polygons||[]).map(function(p){
-        var path=new Path2D();p.rings.forEach(function(r){r.forEach(function(point,i){var xy=core.pixel(point,c.bounds,c.width,c.height);if(i)path.lineTo(xy[0],xy[1]);else path.moveTo(xy[0],xy[1]);});path.closePath();});
-        return {path:path,color:p.color};
-      });
-      this.paths[this.index].forEach(function(p){ctx.globalCompositeOperation=p.color==="ffffff"?"destination-out":"source-over";ctx.fillStyle=p.color==="ffffff"?"#000":"#"+p.color;ctx.fill(p.path,"evenodd");});
-      ctx.globalCompositeOperation="source-over";
-    }
+    var f=this.data.frames[this.index],c=this.config;
+    this.ctx.clearRect(0,0,c.width,c.height);this.paint(this.ctx,this.index);
     this.cursor.setAttribute("transform","translate("+this.x(f.time)+" 0)");this.slider.value=f.time;
     var kind=f.kind==="forecast"?"Forecast":"Observed";
     this.time.textContent=this.timeLabel(f.time);this.time.title=this.fullFormat.format(new Date(f.time*1000));this.kind.textContent=kind;
@@ -210,6 +202,55 @@
     if(this.root.dataset.playing!==animating)this.root.dataset.playing=animating;
     this.status();
   };
+  View.prototype.paint=function(ctx,index){
+    var f=this.data.frames[index],c=this.config;
+    if(!f.available)return;
+    if(!this.paths[index])this.paths[index]=(f.polygons||[]).map(function(p){
+      var path=new Path2D();p.rings.forEach(function(r){r.forEach(function(point,i){var xy=core.pixel(point,c.bounds,c.width,c.height);if(i)path.lineTo(xy[0],xy[1]);else path.moveTo(xy[0],xy[1]);});path.closePath();});
+      return {path:path,color:p.color};
+    });
+    this.paths[index].forEach(function(p){ctx.globalCompositeOperation=p.color==="ffffff"?"destination-out":"source-over";ctx.fillStyle=p.color==="ffffff"?"#000":"#"+p.color;ctx.fill(p.path,"evenodd");});
+    ctx.globalCompositeOperation="source-over";
+  };
+  // Interpolation: planned frames are rendered once to offscreen canvases, then each glide
+  // slides both frames along the estimated rain motion and blends them.
+  View.prototype.canGlide=function(){
+    return this.config.interpolate&&typeof requestAnimationFrame==="function"&&typeof this.ctx.drawImage==="function"&&
+      !(window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  };
+  View.prototype.frameCanvas=function(index){
+    if(this.frameCanvases[index])return this.frameCanvases[index];
+    var canvas=document.createElement("canvas");canvas.width=this.canvas.width;canvas.height=this.canvas.height;
+    var ctx=canvas.getContext("2d");ctx.scale(this.config.pixelRatio,this.config.pixelRatio);this.paint(ctx,index);
+    return this.frameCanvases[index]=canvas;
+  };
+  View.prototype.mask=function(index,w,h){
+    var key=index+":"+w;if(this.masks[key])return this.masks[key];
+    var canvas=document.createElement("canvas");canvas.width=w;canvas.height=h;
+    var ctx=canvas.getContext("2d");ctx.drawImage(this.frameCanvas(index),0,0,w,h);
+    var pixels=ctx.getImageData(0,0,w,h).data,mask=new Uint8Array(w*h);
+    for(var i=0;i<mask.length;i++)mask[i]=pixels[i*4+3]>40?1:0;
+    return this.masks[key]=mask;
+  };
+  View.prototype.motion=function(a,b){
+    var key=a+">"+b,frames=this.data.frames;if(this.vectors[key])return this.vectors[key];
+    var vector=[0,0],c=this.config;
+    // Beyond 30 minutes rain grows and decays more than it moves: crossfade only.
+    if(frames[b].time-frames[a].time<=1800){
+      var qw=Math.max(8,Math.round(c.width/4)),qh=Math.max(4,Math.round(c.height/4)),hw=qw*2,hh=qh*2;
+      var coarse=shift(this.mask(a,qw,qh),this.mask(b,qw,qh),qw,qh,[0,0],10,6);
+      if(coarse){var fine=shift(this.mask(a,hw,hh),this.mask(b,hw,hh),hw,hh,[coarse[0]*2,coarse[1]*2],2,2);vector=[fine[0]*c.width/hw,fine[1]*c.height/hh];}
+    }
+    return this.vectors[key]=vector;
+  };
+  View.prototype.blend=function(a,b,f,vector){
+    var c=this.config,ctx=this.ctx,frames=this.data.frames;
+    ctx.clearRect(0,0,c.width,c.height);
+    ctx.globalAlpha=1-f;ctx.drawImage(this.frameCanvas(a),vector[0]*f,vector[1]*f,c.width,c.height);
+    ctx.globalCompositeOperation="lighter";ctx.globalAlpha=f;ctx.drawImage(this.frameCanvas(b),-vector[0]*(1-f),-vector[1]*(1-f),c.width,c.height);
+    ctx.globalCompositeOperation="source-over";ctx.globalAlpha=1;
+    this.cursor.setAttribute("transform","translate("+(this.x(frames[a].time)*(1-f)+this.x(frames[b].time)*f)+" 0)");
+  };
   View.prototype.status=function(){
     if(this.destroyed)return;
     var messages=[];
@@ -230,14 +271,51 @@
   View.prototype.setError=function(message){this.error=message;this.status();this.renderHomeSummary();};
   View.prototype.schedule=function(){
     clearTimeout(this.timer);this.timer=null;
+    if(this.glide!==null&&typeof cancelAnimationFrame==="function")cancelAnimationFrame(this.glide);
+    this.glide=null;
     if(this.destroyed||this.suspended||!this.playing||this.dry||!this.data||!this.hasAnimation)return;
-    var self=this,delay=home.delay(this.homeTimeline,this.index,this.config,this.speed);
+    // After a pause or scrub the current frame may not be in the plan: continue from the next planned frame.
+    var self=this,plan=this.plan,index=this.index;
+    var at=plan.findIndex(function(s){return s.index===index;}),next=at>=0?(at+1)%plan.length:plan.findIndex(function(s){return s.index>index;});
+    if(next<0)next=0;
+    var target=plan[next].index,wait=at>=0?plan[at].ms:plan[next].ms;
+    // Glide into the next planned frame (never across the loop restart); holds stay still first.
+    var glide=at>=0&&target>index&&this.canGlide()?Math.min(wait,this.glideMs):0;
+    var vector=glide?this.motion(index,target):null;
+    var arrive=function(){self.glide=null;self.index=target;self.draw();self.schedule();};
     this.timer=setTimeout(function(){
-      do{self.index=(self.index+1)%self.data.frames.length;}while(!self.data.frames[self.index].available);
-      self.draw();self.schedule();
-    },delay);
+      self.timer=null;
+      if(!glide){arrive();return;}
+      var start=null,step=function(now){
+        if(start===null)start=now;
+        var f=(now-start)/glide;
+        if(f>=1){arrive();return;}
+        self.blend(index,target,f,vector);self.glide=requestAnimationFrame(step);
+      };
+      self.glide=requestAnimationFrame(step);
+    },wait-glide);
   };
   View.prototype.setSuspended=function(value){this.suspended=value;this.schedule();if(this.data)this.draw();};
-  View.prototype.destroy=function(){this.destroyed=true;clearTimeout(this.timer);clearInterval(this.statusTimer);this.paths=[];};
-  return {View:View,wms:wms,labelRange:labelRange};
+  View.prototype.destroy=function(){
+    this.destroyed=true;clearTimeout(this.timer);clearInterval(this.statusTimer);
+    if(this.glide!==null&&typeof cancelAnimationFrame==="function")cancelAnimationFrame(this.glide);
+    this.paths=[];this.frameCanvases=[];this.masks={};this.vectors={};
+  };
+  // Best whole-pixel shift of rain mask a onto b around a guess, scored by mismatched wet cells.
+  function shift(a,b,w,h,guess,rx,ry){
+    var wet=0,i;for(i=0;i<a.length;i++)wet+=a[i]+b[i];
+    if(wet<12)return null;
+    var best=guess,bestScore=Infinity;
+    for(var dy=guess[1]-ry;dy<=guess[1]+ry;dy++)for(var dx=guess[0]-rx;dx<=guess[0]+rx;dx++){
+      var miss=0,seen=0;
+      for(var y=Math.max(0,dy);y<Math.min(h,h+dy);y++)for(var x=Math.max(0,dx);x<Math.min(w,w+dx);x++){
+        var va=a[(y-dy)*w+x-dx],vb=b[y*w+x];if(va|vb){seen++;if(va!==vb)miss++;}
+      }
+      // A small distance penalty prefers the shortest of equally good shifts.
+      var score=(seen?miss/seen:1)+0.002*((dx-guess[0])*(dx-guess[0])+(dy-guess[1])*(dy-guess[1]));
+      if(score<bestScore){bestScore=score;best=[dx,dy];}
+    }
+    return best;
+  }
+  return {View:View,wms:wms,labelRange:labelRange,shift:shift};
 }));

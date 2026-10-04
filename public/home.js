@@ -42,21 +42,48 @@
     var gap=episode?frames.some(function(f,i){return i>latest&&i<episode.first&&f.time>after&&level(f)===null;}):future.some(function(f){return level(f)===null;});
     return {episode:episode||null,gap:gap,complete:future.length>0&&future.every(function(f){return level(f)!==null;}),end:future.length?future[future.length-1].time:null};
   }
-  function delay(timeline,index,config,speed){
-    var frames=timeline.frames,base=config.frameInterval/speed,ms=base;
-    if(config.adaptivePlayback){
-      var n=level(frames[index]),episode=timeline.byFrame[index];
-      ms=n===null?Math.max(base,300):n===0?Math.max(80,base*0.65):Math.max(n>=6?650:420,base*(n>=6?3:2));
-      if(episode){
-        if(index===episode.first)ms=Math.max(ms,1600);
-        if(index===episode.peak&&episode.peak!==episode.first)ms=Math.max(ms,1200);
-        if(index===episode.last&&episode.end!==null)ms=Math.max(ms,900);
-      }else if(index+1<frames.length&&level(frames[index+1])>0)ms=Math.max(ms,280);
-      if(index===timeline.latest)ms=Math.max(ms,1000);
-      if(index===frames.length-1)ms=Math.max(ms,800);
+  // One playback loop as [{index, ms}]. Adaptive playback spends loopDuration on motion, spread
+  // evenly over frames sampled densest near now and in home rain, then adds holds at the latest
+  // observation and at home arrival, peak and clearing (together at most loopDuration again).
+  // Rain duration changes which frames are shown, never how long the loop takes. With
+  // interpolation the view glides between frames, so half as many frames are needed.
+  function plan(timeline,config,speed){
+    var frames=timeline.frames,latest=timeline.latest,usable=[];
+    frames.forEach(function(f,i){if(f.available)usable.push(i);});
+    var result;
+    if(!config.adaptivePlayback){
+      result=usable.map(function(i){return {index:i,ms:config.frameInterval/speed};});
+    }else{
+      var budget=config.loopDuration,hold={};
+      var add=function(i,share){if(frames[i].available)hold[i]=Math.max(hold[i]||0,budget*share);};
+      if(latest>=0)add(latest,0.15);
+      // A dry gap of up to 15 minutes is a lull, not a new arrival and clearing.
+      var lull=function(a,b){return a&&b&&a.end!==null&&frames[b.first].time-frames[a.end].time<=900;};
+      timeline.episodes.forEach(function(e,k,all){
+        if(e.startKnown&&!lull(all[k-1],e))add(e.first,0.18);
+        if(e.peak!==e.first&&level(frames[e.peak])>=4)add(e.peak,0.1);
+        if(e.end!==null&&!lull(e,all[k+1]))add(e.end,0.1);
+      });
+      var held=Object.keys(hold),holdTotal=held.reduce(function(sum,i){return sum+hold[i];},0);
+      if(holdTotal>budget)held.forEach(function(i){hold[i]*=budget/holdTotal;});
+      var rest=budget,count=Math.max(2,Math.min(usable.length,Math.floor(rest/(config.interpolate?160:80))));
+      var now=latest>=0?frames[latest].time:frames[0].time;
+      var weights=usable.map(function(i,k){
+        var next=usable[k+1],span=next===undefined?(k?frames[i].time-frames[usable[k-1]].time:1):frames[next].time-frames[i].time;
+        var t=frames[i].time,near=t>=now-3600&&t<=now+7200;
+        return Math.max(1,span)*(near?2.5:1)*(level(frames[i])>0?2:1);
+      });
+      var total=weights.reduce(function(a,b){return a+b;},0),step=total/count,cumulative=0,threshold=0,picked=[];
+      usable.forEach(function(i,k){
+        if(usable.length<=count||cumulative>=threshold||hold[i]!==undefined){picked.push(i);while(threshold<=cumulative)threshold+=step;}
+        cumulative+=weights[k];
+      });
+      // Short windows play at a readable pace rather than stretching to fill the budget.
+      var even=Math.min(400,rest/picked.length);
+      result=picked.map(function(i){return {index:i,ms:even+(hold[i]||0)};});
     }
-    if(index===timeline.latest)ms+=config.pauseAtLatest;
-    return ms;
+    result.forEach(function(s){if(s.index===latest)s.ms+=config.pauseAtLatest;});
+    return result;
   }
-  return {level:level,state:state,intensity:intensity,analyze:analyze,outlook:outlook,delay:delay};
+  return {level:level,state:state,intensity:intensity,analyze:analyze,outlook:outlook,plan:plan};
 }));

@@ -2,8 +2,15 @@
 
 ## Unreleased — Rain at home
 
-- Adaptive playback speeds through dry home frames, slows for local rain and heavy rain,
-  and holds arrival, peak, clearing and the latest observation.
+- Adaptive playback fits the loop into `loopDuration` (default 4 s) of motion plus short
+  pauses at the latest observation and at home arrival, peak and clearing (at most 8 s in total).
+  Frames are sampled densest near now and during home rain, so long rain no longer stretches
+  the loop (previously up to ~100 s for a rainy 12-hour outlook).
+- Motion-blended interpolation (`interpolate`, default on): about 25 frames per loop with
+  glides between them; the rain motion between frames is estimated from the rendered radar
+  and used for gaps up to 30 minutes, with a plain crossfade beyond.
+- Fix: forecast frames use a separate MeteoSwiss colour palette, which was not recognised, so
+  forecast rain at home was shown as unavailable. Both palettes now map to the same classes.
 - Minimal map/timeline presentation with a simple home dot, blue/amber precipitation bars
   and shaded home rain windows. Summary, arrival/clearing estimates and captions are opt-in.
 - Constant playback pacing remains configurable.

@@ -10,7 +10,7 @@ bars for your configured location. The chart doubles as the animation scrubber.
 - Smooth geographic contours, subtle rivers and configurable labelled markers.
 - One hour of past observations and a **10-hour forecast** by default.
 - Bars represent precipitation intensity classes at your chosen location.
-- Home-focused playback: fast through dry frames, slower over rain, with readable arrival/peak holds.
+- Home-focused playback: a short loop (about 5–8 s) that pauses when rain arrives, peaks and clears at home.
 - A simple home dot and shaded local rain windows; optional arrival/clearing summary.
 - Pause, drag-to-select and keyboard navigation.
 - Optional integrated current weather, 12-hour outlook and three-day forecast.
@@ -143,10 +143,12 @@ is required. Invalid settings produce an explanatory message in the widget.
 | `staleAfterMinutes` | `20` | Mark old observations as stale |
 | `autoplay` | `true` | Animate automatically |
 | `respectReducedMotion` | `true` | Disable initial autoplay if the viewer requests reduced motion |
-| `adaptivePlayback` | `true` | Speed through dry home frames, slow for local rain and hold key moments; `false` restores constant pacing |
-| `frameInterval` | `480` | Base milliseconds per frame at 1× speed; adaptive playback changes the dwell time |
-| `playbackSpeed` | `4` | Base speed multiplier, 1–8; adaptive rain frames retain minimum readable holds |
-| `pauseAtLatest` | `0` | Extra milliseconds at the latest observation, added to the adaptive hold if enabled |
+| `adaptivePlayback` | `true` | Keep the loop short and pause at home arrival, peak and clearing; `false` restores constant pacing through every frame |
+| `loopDuration` | `4000` | Adaptive playback: milliseconds of motion per loop, 2000–60000; pauses add at most the same again |
+| `interpolate` | `true` | Glide between shown frames: both slide along the estimated rain motion (up to 30-minute gaps) and blend; `false` cuts between frames |
+| `frameInterval` | `480` | Constant playback: milliseconds per frame at 1× speed |
+| `playbackSpeed` | `4` | Constant playback: speed multiplier, 1–8 |
+| `pauseAtLatest` | `0` | Extra milliseconds at the latest observation, in either mode |
 | `timeZone`, `locale` | `"Europe/Zurich"`, `"en-GB"` | Time formatting; UI labels remain English |
 
 `location` must fall inside your map. Latitude must be 45–49 and longitude 4–12,
@@ -179,17 +181,26 @@ bars and their dashed baseline are muted. Rain windows are shaded, with blue rai
 bars and amber heavy-rain bars. A small dim dot marks the map frame during
 playback; pausing or scrubbing reveals a brighter line for precise selection.
 
-With default adaptive pacing, dry frames run at about **80 ms**, rain frames at
-least **420 ms**, and heavy rain at least **650 ms**. The first wet frame holds for
-**1.6 seconds**, the first peak for **1.2 seconds**, the last wet sample before a
-known dry sample for at least **0.9 seconds**, and the latest observation for at
-least **1 second**. The end of the loop pauses for at least **0.8 seconds**. Holds
-use the longest applicable delay rather than stacking, with `pauseAtLatest` added
-afterwards. Base speed still affects pacing when it produces a longer delay.
+Adaptive playback keeps the loop short however long it rains. `loopDuration`
+(default **4 s**) is spread evenly over about 50 frames. Frames are picked densest
+from one hour before to two hours after the latest observation and while it rains at
+home, and sparsest in the dry far forecast. Pauses are added on top: about **0.6 s**
+at the latest observation, **0.7 s** when rain arrives at home, and **0.4 s** at a
+peak of 4 mm/h or more and when it clears. All pauses together are capped at
+`loopDuration`, so a default loop takes about 4.6 s when it is dry at home and at
+most 8 s. A dry gap of 15 minutes or less counts as a lull, not a new arrival.
+`pauseAtLatest` is added afterwards.
+
+With `interpolate` (default), about 25 frames are shown and the map glides between
+them: the rain motion between two frames is estimated once, both frames slide along it
+and blend. Measured on real MeteoSwiss frames, this brings in-between images closer to
+the real radar at 10–20 minute gaps. Beyond 30 minutes rain grows and fades more than
+it moves, so those steps crossfade without sliding. Pauses stay still, the loop does
+not glide back to the start, and reduced-motion viewers get plain cuts.
 
 - Click or drag the chart to select a frame and pause.
 - With the chart focused, ← / → step frames; Home / End select the ends.
-- Play resumes the loop; set `playbackSpeed` in the module configuration to adjust speed.
+- Play resumes the loop; set `loopDuration` in the module configuration to adjust its length.
 - The small timestamp describes the map frame, not the wall clock. Hover for its date.
 
 A failed refresh keeps the last successfully loaded series visible with an error
