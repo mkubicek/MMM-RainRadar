@@ -286,11 +286,14 @@
     this.timer=setTimeout(function(){
       self.timer=null;
       if(!glide){arrive();return;}
-      var start=null,step=function(now){
+      // About 30 glide images per second: each one recomposites the whole mirror window,
+      // so 60 fps doubled the Pi's renderer and GPU load for little visible gain.
+      var start=null,last=-Infinity,step=function(now){
         if(start===null)start=now;
         var f=(now-start)/glide;
         if(f>=1){arrive();return;}
-        self.blend(index,target,f,vector);self.glide=requestAnimationFrame(step);
+        if(now-last>=30){last=now;self.blend(index,target,f,vector);}
+        self.glide=requestAnimationFrame(step);
       };
       self.glide=requestAnimationFrame(step);
     },wait-glide);

@@ -56,3 +56,19 @@ MagicMirror memory. The probability CSV lookup transferred 77,825 bytes using
 byte ranges; this excludes the compact JSON responses, catalogue and manifest.
 The actual weather CSV is tens of megabytes and is never downloaded in full.
 Forecast panels are static during radar playback.
+
+## Interpolated playback on the mirror
+
+Measured 4 October 2026 on the same Raspberry Pi 4 with the full mirror running,
+`top` over 30 seconds after a minute of warm-up, CPU per Electron process
+(renderer and GPU), 100% = one core:
+
+| Playback | Renderer | GPU process |
+| --- | ---: | ---: |
+| `interpolate: false` | 33% | 32% |
+| Interpolated at display rate (~60 fps glides) | 60% | 58% |
+| Interpolated, glides capped at ~30 fps (shipped) | 44% | 41% |
+
+Each glide image makes Electron recomposite the whole mirror window, so the cost
+follows the glide frame rate rather than the blend itself.
+
