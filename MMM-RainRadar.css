@@ -32,23 +32,21 @@
 .rr-widget .rr-chart-wrap svg { display: block; width: 100%; height: 60px; overflow: hidden; }
 .rr-widget .rr-chart-wrap text { font-size: 10px; fill: #666; }
 .rr-widget .rr-chart-wrap .rr-period { font-size: 9px; fill: #888; }
-.rr-widget .rr-bar { fill: #aaa; fill-opacity: .55; }
-.rr-widget .rr-bar.rr-rain { fill: #91bdd2; fill-opacity: .8; }
-.rr-widget .rr-bar.rr-heavy { fill: #e1ba7d; fill-opacity: .85; }
-.rr-widget .rr-bar.rr-forecast { fill-opacity: .32; }
-.rr-widget .rr-home-window { fill: #91bdd2; fill-opacity: .09; }
-.rr-widget .rr-home-window.rr-heavy { fill: #e1ba7d; }
-.rr-widget .rr-event-tick { stroke: #91bdd2; stroke-width: 1; opacity: .7; }
+.rr-widget .rr-bar { fill: #aaa; fill-opacity: .55; shape-rendering: crispEdges; }
+.rr-widget .rr-bar.rr-rain { fill: #91bdd2; fill-opacity: .9; }
+.rr-widget .rr-bar.rr-heavy { fill: #e1ba7d; fill-opacity: .9; }
+.rr-widget .rr-bar.rr-forecast { fill-opacity: .65; }
+.rr-widget .rr-event-tick { stroke: #b5d5e4; stroke-width: 1; stroke-dasharray: 2 2; opacity: .8; }
 .rr-widget .rr-event-tick.rr-heavy { stroke: #e1ba7d; }
-.rr-widget .rr-chart-wrap text.rr-event { font-size: 9px; fill: #b5d5e4; paint-order: stroke; stroke: #000; stroke-width: 2px; }
+.rr-widget .rr-chart-wrap text.rr-event { font-size: 9px; fill: #b5d5e4; }
 .rr-widget .rr-chart-wrap text.rr-event.rr-heavy { fill: #e1ba7d; }
-.rr-widget .rr-bar.rr-missing { fill: none; stroke: #777; stroke-width: .8; }
-.rr-widget .rr-baseline { stroke: #333; stroke-width: 1; }
+.rr-widget .rr-missing { stroke: #777; stroke-width: 1; stroke-dasharray: 1 2; }
+.rr-widget .rr-baseline { stroke: #444; stroke-width: 1; }
+.rr-widget .rr-hour-tick { stroke: #444; stroke-width: 1; }
 .rr-widget .rr-future-line { stroke-dasharray: 3 4; }
 .rr-widget .rr-boundary { stroke: #666; stroke-width: 1; }
 .rr-widget .rr-cursor { stroke: #ddd; fill: #ddd; stroke-width: 1; pointer-events: none; }
-.rr-widget[data-playing=true] .rr-cursor { stroke: none; fill: #777; opacity: .65; }
-.rr-widget[data-playing=true] .rr-cursor line { display: none; }
+.rr-widget[data-playing=true] .rr-cursor { stroke: #999; fill: #999; opacity: .7; }
 .rr-widget .rr-scrubber { position: absolute; left: 0; top: 10px; width: 100%; height: 34px; margin: 0; opacity: 0; cursor: ew-resize; appearance: none; -webkit-appearance: none; background: transparent; }
 .rr-widget .rr-scrubber::-webkit-slider-thumb { appearance: none; -webkit-appearance: none; width: 8px; height: 34px; }
 .rr-widget .rr-scrubber::-moz-range-thumb { width: 8px; height: 34px; border: 0; }

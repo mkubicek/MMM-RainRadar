@@ -162,8 +162,10 @@ the first available frame at/after the requested end; shorter availability is sh
 ## Reading and controlling the chart
 
 The default view shows the map with a simple home dot, home precipitation bars and
-timestamp. Blue bars indicate rain over home; amber bars indicate classes of 10 mm/h
-and above. Heavy rain is not a confirmation of thunder or lightning.
+timestamp. The bars form a continuous profile whose height follows the rain class:
+blue for rain over home, amber for classes of 10 mm/h and above, solid where observed
+and lighter where forecast. A dotted line marks missing home data. Heavy rain is not a
+confirmation of thunder or lightning.
 
 The timeline labels upcoming moments at home where playback pauses: **Rain 20:30**
 when rain arrives, **Peak** or **Heavy** at a peak of 4 mm/h or more, and **Dry 22:25**

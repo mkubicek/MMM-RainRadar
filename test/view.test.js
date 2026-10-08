@@ -28,7 +28,7 @@ test('heavy rain at home gets a measured intensity and a forecast clearing time'
     assert.equal(v.homeHeadline.textContent,'Heavy rain at home');
     assert.match(v.homeDetail.textContent,/20–40 mm\/h · Dry again ~.+ · Forecast/);
     assert.equal(v.homeSummary.dataset.state,'heavy');assert.equal(v.homeMarker.dataset.state,'heavy');
-    assert.ok(v.root.querySelector('.rr-home-window'));assert.ok(v.root.querySelector('.rr-bar.rr-heavy'));
+    assert.ok(v.root.querySelector('.rr-bar.rr-heavy'));assert.equal(v.root.querySelectorAll('.rr-bar.rr-heavy').length,2,'equal frames merge into one bar per kind');
   }finally{v.destroy();}
 });
 test('missing latest home sample is unavailable while known forecast rain remains visible',()=>{

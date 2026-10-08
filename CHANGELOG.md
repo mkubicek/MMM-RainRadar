@@ -15,8 +15,12 @@
   “Light rain in 85 min · from 20:30 · dry ~21:05”.
 - Fix: forecast frames use a separate MeteoSwiss colour palette, which was not recognised, so
   forecast rain at home was shown as unavailable. Both palettes now map to the same classes.
-- Minimal map/timeline presentation with a simple home dot, blue/amber precipitation bars
-  and shaded home rain windows. Summary, arrival/clearing estimates and captions are opt-in.
+- Minimal map/timeline presentation with a simple home dot and blue/amber precipitation bars.
+  Summary, arrival/clearing estimates and captions are opt-in.
+- Calmer timeline: home rain is a continuous step profile with a taller intensity scale
+  instead of thin separate bars in shaded boxes; event labels sit in their own row above it,
+  overlapping labels are dropped, missing data is a dotted line and the cursor line stays
+  visible during playback.
 - Constant playback pacing remains configurable.
 - Dry-day playback requires complete home coverage; unavailable frames cannot appear dry.
 - Demo-only scenarios and browser-verified narrow-layout screenshots.

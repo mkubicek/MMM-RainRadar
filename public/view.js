@@ -180,40 +180,54 @@
     if(this.homeSummary.dataset.state!==tone)this.homeSummary.dataset.state=tone;
     content(this.homeSource,source);content(this.homeHeadline,title);content(this.homeDetail,detail);
   };
+  // Home rain as a continuous step profile: each frame spans to the midpoints of its
+  // neighbours, and runs of equal frames share one rect; missing data is a dotted line.
+  // Labels sit in a row above it.
+  var BASE=40;
+  function barHeight(n){return n?4+(n-1)*2.5:0;}
   View.prototype.renderChart=function(){
     var self=this,c=this.config,frames=this.data.frames,first=frames[0].time,last=frames[frames.length-1].time;
     while(this.chart.firstChild)this.chart.removeChild(this.chart.firstChild);
     var observed=frames.some(function(f){return f.kind==="measurement";}),forecast=frames.some(function(f){return f.kind==="forecast";});
     var boundary=this.x(Math.min(last,Math.max(first,this.data.latestObservation)));
-    var title=svg("text",{x:4,y:10,"class":"rr-period"});title.textContent=this.data.replay?"REPLAY · "+this.data.label:this.data.demo?"DEMO · AT HOME":observed?"Past":"";this.chart.appendChild(title);
-    if(forecast){var future=svg("text",{x:Math.min(c.width-72,boundary+8),y:10,"class":"rr-period"});future.textContent="Forecast";this.chart.appendChild(future);}
-    this.homeTimeline.episodes.forEach(function(e){
-      var start=self.x(frames[e.first].time),end=self.x(frames[e.end===null?e.last:e.end].time);
-      self.chart.appendChild(svg("rect",{x:Math.max(0,start-2),y:15,width:Math.max(4,end-start),height:25,"class":"rr-home-window rr-"+home.state(frames[e.peak])}));
-    });
-    frames.forEach(function(f,i){
-      var width=Math.max(1,Math.min(i?self.x(f.time)-self.x(frames[i-1].time):10,i<frames.length-1?self.x(frames[i+1].time)-self.x(f.time):10)-2);
-      var n=home.level(f),h=n===null?4:n===0?1:3+n*2;
-      var bar=svg("rect",{x:self.x(f.time)-width/2,y:36-h,width:width,height:h,"class":"rr-bar rr-"+home.state(f)+" "+(f.kind==="forecast"?"rr-forecast ":"")+(n===null?"rr-missing":"")});
-      this.chart.appendChild(bar);
-    },this);
-    this.chart.appendChild(svg("line",{x1:4,x2:boundary,y1:36,y2:36,"class":"rr-baseline"}));
-    this.chart.appendChild(svg("line",{x1:boundary,x2:c.width-4,y1:36,y2:36,"class":"rr-baseline rr-future-line"}));
-    if(observed&&forecast)this.chart.appendChild(svg("line",{x1:boundary,x2:boundary,y1:15,y2:40,"class":"rr-boundary"}));
+    var xs=frames.map(function(f){return self.x(f.time);});
+    var edge=function(i,side){var j=i+side;return j>=0&&j<frames.length?(xs[i]+xs[j])/2:xs[i]+side*Math.min(5,Math.abs(xs[i]-xs[i-side]||10)/2);};
+    for(var i=0;i<frames.length;){
+      var f=frames[i],n=home.level(f),j=i;
+      while(j+1<frames.length&&home.level(frames[j+1])===n&&frames[j+1].kind===f.kind)j++;
+      var left=edge(i,-1),right=edge(j,1),h=barHeight(n);
+      if(n===null)this.chart.appendChild(svg("line",{x1:left+1,x2:Math.max(left+2,right-1),y1:BASE-3,y2:BASE-3,"class":"rr-missing"}));
+      else if(n>0)this.chart.appendChild(svg("rect",{x:left,y:BASE-h,width:right-left,height:h,"class":"rr-bar rr-"+home.state(f)+(f.kind==="forecast"?" rr-forecast":"")}));
+      i=j+1;
+    }
+    this.chart.appendChild(svg("line",{x1:4,x2:boundary,y1:BASE,y2:BASE,"class":"rr-baseline"}));
+    this.chart.appendChild(svg("line",{x1:boundary,x2:c.width-4,y1:BASE,y2:BASE,"class":"rr-baseline rr-future-line"}));
+    if(observed&&forecast)this.chart.appendChild(svg("line",{x1:boundary,x2:boundary,y1:13,y2:BASE+3,"class":"rr-boundary"}));
     var step=(last-first)/3600>c.width/40?7200:3600;
-    for(var t=Math.ceil(first/step)*step;t<=last;t+=step){var px=this.x(t);var tick=svg("text",{x:px,y:54,"text-anchor":px<25?"start":px>c.width-25?"end":"middle"});tick.textContent=this.timeLabel(t);this.chart.appendChild(tick);}
-    // Upcoming arrival, peak and clearing at home, labelled where playback pauses.
-    var latest=this.homeTimeline.latest,lastLabel=-Infinity;
+    for(var t=Math.ceil(first/step)*step;t<=last;t+=step){
+      var px=this.x(t);this.chart.appendChild(svg("line",{x1:px,x2:px,y1:BASE,y2:BASE+3,"class":"rr-hour-tick"}));
+      var tick=svg("text",{x:px,y:54,"text-anchor":px<25?"start":px>c.width-25?"end":"middle"});tick.textContent=this.timeLabel(t);this.chart.appendChild(tick);
+    }
+    // Top row: period names and upcoming arrival, peak and clearing at home (where playback
+    // pauses). A moment whose label would overlap an earlier one is left unmarked.
+    var taken=[];
+    var place=function(text,x,anchor,className){
+      var width=text.length*4.2,from=anchor==="end"?x-width:x;
+      if(taken.some(function(s){return from<s[1]+4&&from+width>s[0]-4;}))return false;
+      var label=svg("text",{x:x,y:10,"text-anchor":anchor,"class":className});label.textContent=text;self.chart.appendChild(label);
+      taken.push([from,from+width]);return true;
+    };
+    place(this.data.replay?"REPLAY · "+this.data.label:this.data.demo?"DEMO · AT HOME":observed?"Past":"",4,"start","rr-period");
+    var latest=this.homeTimeline.latest;
     home.moments(this.homeTimeline).forEach(function(m){
       if(m.index<=latest)return;
-      var px=self.x(frames[m.index].time),heavy=home.level(frames[m.index])>=6;
-      var name=m.kind==="arrival"?"Rain":m.kind==="clearing"?"Dry":heavy?"Heavy":"Peak";
-      self.chart.appendChild(svg("line",{x1:px,x2:px,y1:15,y2:36,"class":"rr-event-tick rr-"+m.kind+(heavy?" rr-heavy":"")}));
-      if(px-lastLabel<48)return;
-      var end=px>c.width-50,label=svg("text",{x:end?px-2:px+2,y:23,"text-anchor":end?"end":"start","class":"rr-event rr-"+m.kind+(heavy?" rr-heavy":"")});
-      label.textContent=name+" "+self.timeLabel(frames[m.index].time);self.chart.appendChild(label);lastLabel=px;
+      var px=xs[m.index],heavy=home.level(frames[m.index])>=6,kind=" rr-"+m.kind+(heavy?" rr-heavy":"");
+      var name=m.kind==="arrival"?"Rain":m.kind==="clearing"?"Dry":heavy?"Heavy":"Peak",end=px>c.width-50;
+      if(place(name+" "+self.timeLabel(frames[m.index].time),end?px:px-1,end?"end":"start","rr-event"+kind))
+        self.chart.appendChild(svg("line",{x1:px,x2:px,y1:13,y2:BASE,"class":"rr-event-tick"+kind}));
     });
-    this.cursor=svg("g",{"class":"rr-cursor"});this.cursor.appendChild(svg("line",{y1:13,y2:40}));this.cursor.appendChild(svg("circle",{cy:36,r:1.5}));this.chart.appendChild(this.cursor);
+    if(forecast)place("Forecast",Math.min(c.width-44,boundary+4),"start","rr-period");
+    this.cursor=svg("g",{"class":"rr-cursor"});this.cursor.appendChild(svg("line",{y1:13,y2:BASE+3}));this.cursor.appendChild(svg("circle",{cy:BASE,r:1.5}));this.chart.appendChild(this.cursor);
     this.slider.min=first;this.slider.max=last;this.slider.disabled=frames.length<2;
   };
   View.prototype.draw=function(){
